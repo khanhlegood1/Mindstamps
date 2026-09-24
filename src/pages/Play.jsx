@@ -185,9 +185,9 @@ const Play = () => {
   if (gameState === 'no-memories') {
     return (
       <div className="side-by-side h-full">
-        <div className="flex flex-col justify-center items-center p-12 relative overflow-hidden">
+        <div className="flex flex-col justify-center items-center p-6 md:p-12 relative overflow-hidden">
           <div className="text-center z-10">
-            <h1 className="text-3xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
+            <h1 className="text-2xl md:text-3xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
               Your journal is empty
             </h1>
             <p className="text-lg mb-8" style={{ color: 'var(--warm-brown)' }}>
@@ -196,7 +196,7 @@ const Play = () => {
           </div>
         </div>
 
-        <div className="flex flex-col justify-center items-center p-12" style={{ background: 'linear-gradient(135deg, var(--soft-beige) 0%, var(--warm-cream) 100%)' }}>
+        <div className="flex flex-col justify-center items-center p-6 md:p-12" style={{ background: 'linear-gradient(135deg, var(--soft-beige) 0%, var(--warm-cream) 100%)' }}>
           <a
             href="#journal"
             className="btn-warm px-8 py-4 rounded-full font-medium text-lg"
@@ -211,9 +211,9 @@ const Play = () => {
   if (gameState === 'finished') {
     return (
       <div className="side-by-side h-full">
-        <div className="flex flex-col justify-center items-center p-12 relative overflow-hidden">
+        <div className="flex flex-col justify-center items-center p-6 md:p-12 relative overflow-hidden">
           <div className="text-center z-10">
-            <h1 className="text-4xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
+            <h1 className="text-3xl md:text-4xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
               Well done!
             </h1>
             <p className="text-lg mb-6" style={{ color: 'var(--warm-brown)' }}>
@@ -221,7 +221,7 @@ const Play = () => {
             </p>
 
             <div className="paper-texture cozy-shadow rounded-2xl p-8 mb-8">
-              <div className="text-6xl font-bold mb-4" style={{ color: 'var(--dusty-rose)' }}>{score}</div>
+              <div className="text-5xl md:text-6xl font-bold mb-4" style={{ color: 'var(--dusty-rose)' }}>{score}</div>
               <div className="text-xl mb-4" style={{ color: 'var(--warm-brown)' }}>points total</div>
               <div className="text-lg" style={{ color: 'var(--deep-brown)' }}>
                 You went through {memories.length} memories and averaged about{' '}
@@ -231,7 +231,7 @@ const Play = () => {
           </div>
         </div>
 
-        <div className="flex flex-col justify-center items-center p-12 pb-16" style={{ background: 'linear-gradient(135deg, var(--soft-beige) 0%, var(--warm-cream) 100%)' }}>
+        <div className="flex flex-col justify-center items-center p-6 md:p-12 pb-8 md:pb-16" style={{ background: 'linear-gradient(135deg, var(--soft-beige) 0%, var(--warm-cream) 100%)' }}>
           <div className="w-full max-w-sm space-y-4">
             <button
               onClick={restartGame}
@@ -289,24 +289,25 @@ const Play = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="paper-texture border-b border-opacity-20 px-8 py-4 flex justify-between items-center flex-shrink-0" style={{ borderColor: 'var(--warm-brown)' }}>
-        <h1 className="text-2xl font-journal font-semibold" style={{ color: 'var(--deep-brown)' }}>
+      <div className="paper-texture border-b border-opacity-20 px-4 md:px-8 py-3 md:py-4 gap-3 flex justify-between items-center flex-shrink-0" style={{ borderColor: 'var(--warm-brown)' }}>
+        <h1 className="text-lg sm:text-2xl font-journal font-semibold" style={{ color: 'var(--deep-brown)' }}>
           Let's play a little game
         </h1>
-        <div className="text-right">
-          <div className="text-sm font-medium" style={{ color: 'var(--warm-brown)' }}>
+        <div className="text-right flex-shrink-0">
+          <div className="text-sm font-medium whitespace-nowrap" style={{ color: 'var(--warm-brown)' }}>
             {score} points • {currentIndex + 1} of {memories.length}
           </div>
         </div>
       </div>
 
       {currentMemory ? (
+        <>
         <div className="side-by-side relative">
           {/* Left Side - Memory Display */}
-          <div className="paper-texture p-6 border-r border-opacity-20 flex flex-col h-full" style={{ borderColor: 'var(--warm-brown)' }}>
-            <div className="w-4/5 mx-auto h-full flex flex-col">
-              {/* Scrollable Content Area - Full height with bottom padding for floating button */}
-              <div className="flex-1 overflow-y-auto" style={{ paddingBottom: '120px' }}>
+          <div className="paper-texture p-4 md:p-6 border-r border-opacity-20 flex flex-col h-full" style={{ borderColor: 'var(--warm-brown)' }}>
+            <div className="w-full md:w-4/5 mx-auto h-full flex flex-col">
+              {/* Scrollable Content Area */}
+              <div className="flex-1 overflow-y-auto pb-4">
                 <h2 className="text-xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
                   {currentMemory.title}
                 </h2>
@@ -323,7 +324,7 @@ const Play = () => {
                 )}
 
                 <div className="paper-texture cozy-shadow rounded-lg p-4 mb-4">
-                  <div className="max-h-32 overflow-y-auto">
+                  <div className="story-scroll">
                     <p className="leading-relaxed text-sm" style={{ color: 'var(--ink-black)' }}>
                       {currentMemory.story}
                     </p>
@@ -361,60 +362,12 @@ const Play = () => {
                 {gameState === 'playing' && !userGuess && (
                   <div className="paper-texture cozy-shadow rounded-lg p-3 text-center">
                     <div className="text-sm" style={{ color: 'var(--warm-brown)' }}>
-                      Where do you think this happened? Click somewhere on the map
+                      Where do you think this happened? Tap or click somewhere on the map
                     </div>
                   </div>
                 )}
               </div>
             </div>
-
-            {/* Floating Action Button - Fixed to Left Side Bottom */}
-            {(gameState === 'playing' && userGuess) || gameState === 'result' ? (
-              <div
-                className="absolute bottom-6 left-6"
-                style={{
-                  width: 'calc(40% - 3rem)',
-                  zIndex: 30,
-                  pointerEvents: 'none'
-                }}
-              >
-                <div
-                  className="w-4/5 mx-auto p-4 rounded-2xl"
-                  style={{
-                    background: 'linear-gradient(to top, var(--paper-white) 90%, rgba(250, 247, 242, 0.95))',
-                    pointerEvents: 'auto',
-                    backdropFilter: 'blur(8px)',
-                    boxShadow: '0 -8px 32px rgba(0,0,0,0.1)'
-                  }}
-                >
-                  {/* Submit button when playing */}
-                  {gameState === 'playing' && userGuess && (
-                    <button
-                      onClick={submitGuess}
-                      className="btn-sage w-full py-4 rounded-full font-medium text-lg shadow-xl border-2 border-white"
-                      style={{
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.2), 0 4px 16px rgba(156, 175, 136, 0.4)'
-                      }}
-                    >
-                      That's my guess
-                    </button>
-                  )}
-
-                  {/* Next Memory button when showing results */}
-                  {gameState === 'result' && (
-                    <button
-                      onClick={nextMemory}
-                      className="btn-warm w-full py-4 rounded-full font-medium text-lg shadow-xl border-2 border-white"
-                      style={{
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.2), 0 4px 16px rgba(212, 165, 116, 0.4)'
-                      }}
-                    >
-                      {currentIndex + 1 >= memories.length ? 'That was fun' : 'Next one'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            ) : null}
           </div>
 
           {/* Right Side - Pure Map Interface */}
@@ -427,8 +380,8 @@ const Play = () => {
             </div>
 
             {/* Map Container - Fixed Height */}
-            <div className="p-4">
-              <div className="w-full" style={{ height: '400px' }}>
+            <div className="p-3 md:p-4">
+              <div className="map-box">
                 <GuessMap
                   onGuess={handleMapGuess}
                   guessPosition={userGuess}
@@ -440,6 +393,34 @@ const Play = () => {
             </div>
           </div>
         </div>
+
+        {/* Action bar: always visible at the bottom, full width on every screen size */}
+        {((gameState === 'playing' && userGuess) || gameState === 'result') && (
+          <div className="game-action-bar paper-texture flex-shrink-0 px-4 pt-3">
+            <div className="w-full max-w-sm mx-auto">
+              {/* Submit button when playing */}
+              {gameState === 'playing' && userGuess && (
+                <button
+                  onClick={submitGuess}
+                  className="btn-sage w-full py-4 rounded-full font-medium text-lg"
+                >
+                  That's my guess
+                </button>
+              )}
+
+              {/* Next Memory button when showing results */}
+              {gameState === 'result' && (
+                <button
+                  onClick={nextMemory}
+                  className="btn-warm w-full py-4 rounded-full font-medium text-lg"
+                >
+                  {currentIndex + 1 >= memories.length ? 'That was fun' : 'Next one'}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+        </>
       ) : (
         <div className="flex-1 flex items-center justify-center">
           <div className="paper-texture cozy-shadow rounded-2xl p-8 text-center">

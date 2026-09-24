@@ -49,28 +49,28 @@ const Login = () => {
     <div className="cozy-container">
       <div className="side-by-side h-full">
         {/* Left Side - Welcome */}
-        <div className="flex flex-col justify-center items-center p-12 relative overflow-hidden">
+        <div className="flex flex-col justify-center items-center p-6 md:p-12 relative overflow-hidden">
           {/* Decorative elements */}
           <div className="absolute top-8 left-8 text-6xl opacity-20">🌸</div>
           <div className="absolute bottom-8 right-8 text-4xl opacity-20">📚</div>
           <div className="absolute top-1/3 right-12 text-3xl opacity-15">✨</div>
 
           <div className="text-center z-10">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-yellow-200 to-orange-300 flex items-center justify-center text-3xl">
+            <div className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-4 md:mb-6 rounded-full bg-gradient-to-br from-yellow-200 to-orange-300 flex items-center justify-center text-3xl">
               ✨
             </div>
-            <h1 className="text-4xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
+            <h1 className="text-3xl md:text-4xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
               Welcome to Mindstamps
             </h1>
-            <p className="text-lg leading-relaxed max-w-md" style={{ color: 'var(--warm-brown)' }}>
+            <p className="hidden md:block text-lg leading-relaxed max-w-md" style={{ color: 'var(--warm-brown)' }}>
               Your personal sanctuary for memories. A cozy space where every moment finds its home.
             </p>
           </div>
         </div>
 
         {/* Right Side - Login Form */}
-        <div className="flex flex-col justify-center items-center p-12" style={{ background: 'linear-gradient(135deg, var(--soft-beige) 0%, var(--warm-cream) 100%)' }}>
-          <div className="paper-texture cozy-shadow rounded-2xl p-8 w-full max-w-md">
+        <div className="flex flex-col justify-center items-center p-6 md:p-12" style={{ background: 'linear-gradient(135deg, var(--soft-beige) 0%, var(--warm-cream) 100%)' }}>
+          <div className="paper-texture cozy-shadow rounded-2xl p-6 md:p-8 w-full max-w-md">
             <div className="text-center mb-8">
               <h2 className="text-2xl font-journal font-semibold" style={{ color: 'var(--deep-brown)' }}>
                 {showForgotPassword ? 'Reset Password' : isSignUp ? 'Create Your Space' : 'Welcome Back'}

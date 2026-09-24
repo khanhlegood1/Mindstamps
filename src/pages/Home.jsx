@@ -25,10 +25,10 @@ const Home = () => {
   return (
     <div className="side-by-side h-full">
       {/* Left Side - Welcome & Journal */}
-      <div className="flex flex-col justify-center items-center p-12 relative overflow-hidden">
+      <div className="flex flex-col justify-center items-center p-6 md:p-12 relative overflow-hidden">
         <div className="max-w-lg text-center z-10">
           <div className="mb-8">
-            <h1 className="text-5xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
+            <h1 className="text-4xl md:text-5xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
               Hey there
             </h1>
             <p className="text-lg leading-relaxed" style={{ color: 'var(--warm-brown)' }}>
@@ -54,7 +54,7 @@ const Home = () => {
       </div>
 
       {/* Right Side - Play & Adventure */}
-      <div className="flex flex-col justify-center items-center p-12 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, var(--soft-beige) 0%, var(--warm-cream) 100%)' }}>
+      <div className="flex flex-col justify-center items-center p-6 md:p-12 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, var(--soft-beige) 0%, var(--warm-cream) 100%)' }}>
         <div className="max-w-lg text-center z-10">
           <div className="paper-texture cozy-shadow rounded-2xl p-8">
             <h2 className="text-2xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
