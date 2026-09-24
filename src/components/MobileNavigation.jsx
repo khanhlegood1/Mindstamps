@@ -1,20 +1,5 @@
-import { useState, useEffect } from 'react';
-
 const MobileNavigation = ({ currentPage, totalPages, onPrevPage, onNextPage, onPageSelect }) => {
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  if (!isMobile) return null;
-
+  // Shown/hidden purely by CSS (.mobile-nav) so it always matches the layout breakpoint
   return (
     <div className="mobile-nav">
       <div className="flex items-center justify-between">
@@ -22,7 +7,7 @@ const MobileNavigation = ({ currentPage, totalPages, onPrevPage, onNextPage, onP
         <button
           onClick={onPrevPage}
           disabled={currentPage === 0}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-full font-medium transition-all duration-300 ${
+          className={`flex items-center space-x-2 px-4 py-2 min-h-[44px] rounded-full font-medium transition-all duration-300 ${
             currentPage === 0 
               ? 'opacity-30 cursor-not-allowed' 
               : 'btn-warm'
@@ -50,7 +35,7 @@ const MobileNavigation = ({ currentPage, totalPages, onPrevPage, onNextPage, onP
               <button
                 key={pageIndex}
                 onClick={() => onPageSelect(pageIndex)}
-                className={`w-8 h-8 rounded-full text-xs font-medium transition-all duration-300 ${
+                className={`w-9 h-9 rounded-full text-xs font-medium transition-all duration-300 ${
                   pageIndex === currentPage 
                     ? 'bg-gradient-to-r from-orange-300 to-yellow-300 text-white shadow-md' 
                     : 'bg-gradient-to-r from-orange-100 to-yellow-100 text-gray-700 hover:from-orange-200 hover:to-yellow-200'
@@ -66,7 +51,7 @@ const MobileNavigation = ({ currentPage, totalPages, onPrevPage, onNextPage, onP
         <button
           onClick={onNextPage}
           disabled={currentPage >= totalPages - 1}
-          className={`flex items-center space-x-2 px-4 py-2 rounded-full font-medium transition-all duration-300 ${
+          className={`flex items-center space-x-2 px-4 py-2 min-h-[44px] rounded-full font-medium transition-all duration-300 ${
             currentPage >= totalPages - 1 
               ? 'opacity-30 cursor-not-allowed' 
               : 'btn-warm'
@@ -78,7 +63,7 @@ const MobileNavigation = ({ currentPage, totalPages, onPrevPage, onNextPage, onP
       </div>
 
       {/* Swipe Hint */}
-      <div className="text-center mt-2">
+      <div className="swipe-hint text-center mt-2">
         <p className="text-xs" style={{ color: 'var(--warm-brown)' }}>
           Swipe left/right to navigate pages
         </p>

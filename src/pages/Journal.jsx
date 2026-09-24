@@ -88,14 +88,14 @@ const MemoryPage = ({ memory, isLeft = true, onEdit, onSave, onCancelEdit, onDel
 
   if (isEditing) {
     return (
-      <div className={`journal-page paper-texture h-full p-8 flex flex-col ${isLeft ? 'border-r border-opacity-20' : ''} relative`} 
+      <div className={`journal-page paper-texture min-h-full p-5 md:p-8 flex flex-col ${isLeft ? 'border-r border-opacity-20' : ''} relative`} 
            style={{ 
              borderColor: 'var(--warm-brown)',
              boxShadow: '0 0 0 3px rgba(255, 165, 0, 0.3), 0 0 20px rgba(255, 165, 0, 0.2)',
              background: 'linear-gradient(135deg, rgba(255, 248, 220, 0.8), rgba(255, 245, 238, 0.9))'
            }}>
         {/* Visual editing indicator */}
-        <div className="absolute -top-2 -left-2 -right-2 -bottom-2 border-2 border-dashed rounded-lg pointer-events-none animate-pulse"
+        <div className="absolute top-1 left-1 right-1 bottom-1 border-2 border-dashed rounded-lg pointer-events-none animate-pulse"
              style={{ borderColor: 'var(--dusty-rose)' }} />
         
         {/* Page header with date */}
@@ -144,7 +144,7 @@ const MemoryPage = ({ memory, isLeft = true, onEdit, onSave, onCancelEdit, onDel
           <textarea
             value={editStory}
             onChange={(e) => setEditStory(e.target.value)}
-            className="flex-1 font-journal leading-relaxed text-base bg-transparent border-none outline-none resize-none w-full min-h-0"
+            className="flex-1 font-journal leading-relaxed text-base bg-transparent border-none outline-none resize-none w-full min-h-[12rem]"
             style={{ color: 'var(--ink-black)' }}
             placeholder="Tell your story..."
           />
@@ -155,7 +155,7 @@ const MemoryPage = ({ memory, isLeft = true, onEdit, onSave, onCancelEdit, onDel
           </div>
 
           {/* Edit buttons - fixed within page content area */}
-          <div className="flex justify-between items-center pt-4 border-t border-opacity-20 flex-shrink-0" style={{ borderColor: 'var(--warm-brown)' }}>
+          <div className="flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-opacity-20 flex-shrink-0" style={{ borderColor: 'var(--warm-brown)' }}>
             <div className="flex space-x-3">
               <button
                 onClick={handleSave}
@@ -196,7 +196,7 @@ const MemoryPage = ({ memory, isLeft = true, onEdit, onSave, onCancelEdit, onDel
   }
 
   return (
-    <div className={`journal-page paper-texture h-full p-8 relative ${isLeft ? 'border-r border-opacity-20' : ''} group hover:shadow-lg transition-all duration-300`} 
+    <div className={`journal-page paper-texture min-h-full p-5 md:p-8 relative ${isLeft ? 'border-r border-opacity-20' : ''} group hover:shadow-lg transition-all duration-300`} 
          style={{ borderColor: 'var(--warm-brown)' }}>
       {/* Edit button */}
       <button
@@ -220,7 +220,7 @@ const MemoryPage = ({ memory, isLeft = true, onEdit, onSave, onCancelEdit, onDel
       </button>
 
       {/* Page header with date */}
-      <div className="mb-6 pb-4 border-b border-opacity-20" style={{ borderColor: 'var(--warm-brown)' }}>
+      <div className="mb-6 pb-4 pr-20 border-b border-opacity-20" style={{ borderColor: 'var(--warm-brown)' }}>
         <div className="text-sm font-journal italic" style={{ color: 'var(--warm-brown)' }}>
           {formatDate(memory.createdAt)}
         </div>
@@ -262,7 +262,7 @@ const MemoryPage = ({ memory, isLeft = true, onEdit, onSave, onCancelEdit, onDel
 
 // Navigation Footer Component
 const NavigationFooter = ({ currentPage, totalPages, onPrevPage, onNextPage, onPageSelect, showKeyboardHint = true }) => (
-  <div className="paper-texture border-t border-opacity-20 px-8 py-5 flex justify-between items-center flex-shrink-0 bg-opacity-95" style={{ borderColor: 'var(--warm-brown)', backgroundColor: 'var(--paper-white)' }}>
+  <div className="paper-texture border-t border-opacity-20 px-4 md:px-8 py-4 md:py-5 flex justify-between items-center gap-3 flex-shrink-0 bg-opacity-95" style={{ borderColor: 'var(--warm-brown)', backgroundColor: 'var(--paper-white)' }}>
     <div className="flex items-center space-x-4">
       <button
         onClick={onPrevPage}
@@ -279,18 +279,18 @@ const NavigationFooter = ({ currentPage, totalPages, onPrevPage, onNextPage, onP
       </button>
       
       {showKeyboardHint && (
-        <div className="text-sm font-medium px-3 py-2 rounded-full bg-gradient-to-r from-orange-50 to-yellow-50" style={{ color: 'var(--warm-brown)' }}>
+        <div className="keyboard-hint hidden lg:block text-sm font-medium px-3 py-2 rounded-full bg-gradient-to-r from-orange-50 to-yellow-50" style={{ color: 'var(--warm-brown)' }}>
           Use arrow keys or A/D to flip pages
         </div>
       )}
     </div>
 
-    <div className="flex space-x-3">
+    <div className="flex flex-wrap justify-center gap-3 min-w-0">
       {Array.from({ length: totalPages }, (_, i) => (
         <button
           key={i}
           onClick={() => onPageSelect(i)}
-          className={`w-4 h-4 rounded-full transition-all duration-300 ${
+          className={`page-dot w-4 h-4 rounded-full transition-all duration-300 ${
             i === currentPage 
               ? 'bg-gradient-to-r from-orange-300 to-yellow-300 shadow-md' 
               : 'bg-gradient-to-r from-orange-100 to-yellow-100 hover:from-orange-200 hover:to-yellow-200'
@@ -338,6 +338,12 @@ const Journal = () => {
   // Add keyboard navigation
   useEffect(() => {
     const handleKeyPress = (e) => {
+      // Never hijack typing (editing a memory) or browser shortcuts like Cmd/Ctrl+A
+      const el = e.target;
+      const tag = el && el.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (el && el.isContentEditable)) return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
       // Only handle navigation if we're in list view and have memories
       if (view !== 'list' || memories.length === 0) return;
       
@@ -643,7 +649,7 @@ const Journal = () => {
     return (
       <div className="h-full flex flex-col">
         {/* Journal Header */}
-        <div className="paper-texture border-b border-opacity-20 px-8 py-4 flex justify-between items-center flex-shrink-0" style={{ borderColor: 'var(--warm-brown)' }}>
+        <div className="paper-texture border-b border-opacity-20 px-4 sm:px-8 py-3 sm:py-4 gap-3 flex justify-between items-center flex-shrink-0" style={{ borderColor: 'var(--warm-brown)' }}>
           <div>
             <h1 className="text-2xl font-journal font-semibold" style={{ color: 'var(--deep-brown)' }}>
               Your journal
@@ -655,7 +661,7 @@ const Journal = () => {
           
           <button
             onClick={() => setView('create')}
-            className="btn-warm px-6 py-2 rounded-full font-medium"
+            className="btn-warm px-4 sm:px-6 py-2 rounded-full font-medium whitespace-nowrap"
           >
             Write something
           </button>
@@ -664,9 +670,9 @@ const Journal = () => {
         {/* Empty Journal Pages */}
         <div className="side-by-side spiral-holes">
           {/* Left page - Empty journal */}
-          <div className="paper-texture flex flex-col justify-center items-center p-12 border-r border-opacity-20" style={{ borderColor: 'var(--warm-brown)' }}>
+          <div className="paper-texture flex flex-col justify-center items-center p-6 md:p-12 border-r border-opacity-20" style={{ borderColor: 'var(--warm-brown)' }}>
             <div className="text-center">
-              <h2 className="text-3xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
+              <h2 className="text-2xl md:text-3xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
                 These pages are waiting
               </h2>
               <p className="text-lg leading-relaxed mb-8" style={{ color: 'var(--warm-brown)' }}>
@@ -676,7 +682,7 @@ const Journal = () => {
           </div>
 
           {/* Right page - Create invitation */}
-          <div className="paper-texture flex flex-col justify-center items-center p-12">
+          <div className="paper-texture flex flex-col justify-center items-center p-6 md:p-12">
             <div className="text-center">
               <h3 className="text-2xl font-journal font-semibold mb-6" style={{ color: 'var(--deep-brown)' }}>
                 What's your first memory?
@@ -691,15 +697,17 @@ const Journal = () => {
           </div>
         </div>
 
-        {/* Navigation Footer - Even for empty state */}
-        <NavigationFooter
-          currentPage={0}
-          totalPages={1}
-          onPrevPage={() => {}}
-          onNextPage={() => {}}
-          onPageSelect={() => {}}
-          showKeyboardHint={false}
-        />
+        {/* Navigation Footer - Even for empty state (tablet / laptop only) */}
+        <div className="regular-only">
+          <NavigationFooter
+            currentPage={0}
+            totalPages={1}
+            onPrevPage={() => {}}
+            onNextPage={() => {}}
+            onPageSelect={() => {}}
+            showKeyboardHint={false}
+          />
+        </div>
       </div>
     );
   }
@@ -711,7 +719,7 @@ const Journal = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Journal Header */}
-      <div className="paper-texture border-b border-opacity-20 px-4 sm:px-8 py-4 flex justify-between items-center flex-shrink-0 mobile-header" style={{ borderColor: 'var(--warm-brown)' }}>
+      <div className="paper-texture border-b border-opacity-20 px-4 sm:px-8 py-3 sm:py-4 gap-3 flex justify-between items-center flex-shrink-0" style={{ borderColor: 'var(--warm-brown)' }}>
         <div className="flex-1">
           <h1 className="text-xl sm:text-2xl font-journal font-semibold" style={{ color: 'var(--deep-brown)' }}>
             Your journal
@@ -721,7 +729,7 @@ const Journal = () => {
           </p>
         </div>
         
-        <div className="mobile-buttons">
+        <div className="flex-shrink-0">
           <button
             onClick={() => setView('create')}
             className="btn-warm px-4 sm:px-6 py-2 rounded-full font-medium text-sm sm:text-base whitespace-nowrap"
@@ -768,8 +776,8 @@ const Journal = () => {
           )}
         </div>
 
-        {/* Right Page */}
-        <div className="relative">
+        {/* Right Page (empty placeholder only makes sense in the two-page spread) */}
+        <div className={`relative ${rightMemory ? '' : 'regular-only'}`}>
           {rightMemory ? (
             <MemoryPage 
               memory={rightMemory} 
@@ -801,8 +809,8 @@ const Journal = () => {
         </div>
       </div>
 
-      {/* Navigation Footer - Desktop */}
-      <div className="hidden md:block">
+      {/* Navigation Footer - tablet / laptop */}
+      <div className="regular-only">
         <NavigationFooter
           currentPage={currentPage}
           totalPages={totalPages}

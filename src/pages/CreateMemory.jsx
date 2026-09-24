@@ -271,9 +271,9 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
     return (
       <div className="side-by-side h-full">
           {/* Left Side - Success Message */}
-          <div className="flex flex-col justify-center items-center p-12 relative overflow-hidden">
+          <div className="flex flex-col justify-center items-center p-6 md:p-12 relative overflow-hidden">
             <div className="text-center z-10">
-              <h1 className="text-4xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
+              <h1 className="text-3xl md:text-4xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
                 Nice work
               </h1>
               <p className="text-lg mb-8" style={{ color: 'var(--warm-brown)' }}>
@@ -292,7 +292,7 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
           </div>
 
           {/* Right Side - Action Buttons */}
-          <div className="flex flex-col justify-center items-center p-12" style={{ background: 'linear-gradient(135deg, var(--soft-beige) 0%, var(--warm-cream) 100%)' }}>
+          <div className="flex flex-col justify-center items-center p-6 md:p-12" style={{ background: 'linear-gradient(135deg, var(--soft-beige) 0%, var(--warm-cream) 100%)' }}>
             <div className="w-full max-w-sm space-y-4">
               <button
                 onClick={createAnotherMemory}
@@ -328,12 +328,12 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="paper-texture border-b border-opacity-20 px-4 sm:px-8 py-4 flex items-center justify-between flex-shrink-0" style={{ borderColor: 'var(--warm-brown)' }}>
-        <div className="flex items-center flex-1">
+      <div className="paper-texture border-b border-opacity-20 px-4 sm:px-8 py-3 sm:py-4 gap-2 flex items-center justify-between flex-shrink-0" style={{ borderColor: 'var(--warm-brown)' }}>
+        <div className="flex items-center flex-1 min-w-0">
           {onBack && (
             <button
               onClick={onBack}
-              className="mr-4 flex items-center space-x-2 px-3 py-2 rounded-full transition-all duration-300 hover:bg-gradient-to-r hover:from-orange-100 hover:to-yellow-100"
+              className="mr-2 sm:mr-4 flex-shrink-0 flex items-center space-x-2 px-3 py-2 rounded-full transition-all duration-300 hover:bg-gradient-to-r hover:from-orange-100 hover:to-yellow-100"
               style={{ color: 'var(--warm-brown)' }}
             >
               <span>←</span>
@@ -341,7 +341,7 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
               <span className="sm:hidden">Back</span>
             </button>
           )}
-          <h1 className="text-xl sm:text-2xl font-journal font-semibold" style={{ color: 'var(--deep-brown)' }}>
+          <h1 className="text-lg sm:text-2xl font-journal font-semibold truncate" style={{ color: 'var(--deep-brown)' }}>
             Write a new memory
           </h1>
         </div>
@@ -349,7 +349,7 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
         {/* Voice Mode Toggle */}
         <button
           onClick={toggleVoiceMode}
-          className={`px-3 py-2 rounded-full text-sm font-medium transition-all duration-300 flex items-center space-x-2 whitespace-nowrap ${
+          className={`px-3 py-2 rounded-full text-sm font-medium transition-all duration-300 flex items-center flex-shrink-0 space-x-2 whitespace-nowrap ${
             isVoiceMode 
               ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg' 
               : 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 hover:from-gray-200 hover:to-gray-300'
@@ -362,7 +362,7 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
 
       <div className="side-by-side">
         {/* Left Side - Form */}
-        <div className="paper-texture p-8 overflow-y-auto border-r border-opacity-20" style={{ borderColor: 'var(--warm-brown)' }}>
+        <div className="paper-texture p-5 md:p-8 overflow-y-auto border-r border-opacity-20" style={{ borderColor: 'var(--warm-brown)' }}>
           <form onSubmit={handleSubmit} className="space-y-6 max-w-md mx-auto">
             {/* Title */}
             <div className={`${isVoiceMode && currentVoiceField === 'title' ? 'ring-2 ring-purple-300 rounded-lg p-2' : ''}`}>
@@ -477,7 +477,7 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
         <div className="flex flex-col pb-8" style={{ background: 'linear-gradient(135deg, var(--soft-beige) 0%, var(--warm-cream) 100%)' }}>
           {/* Image Preview */}
           {imagePreview && (
-            <div className="p-6 border-b border-opacity-20" style={{ borderColor: 'var(--warm-brown)' }}>
+            <div className="p-4 md:p-6 border-b border-opacity-20" style={{ borderColor: 'var(--warm-brown)' }}>
               <h3 className="text-lg font-journal font-semibold mb-3" style={{ color: 'var(--deep-brown)' }}>
                 Your photo
               </h3>
@@ -493,11 +493,11 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
           )}
 
           {/* Location Picker */}
-          <div className="flex-1 p-6">
+          <div className="flex-1 p-4 md:p-6">
             <h3 className="text-lg font-journal font-semibold mb-3" style={{ color: 'var(--deep-brown)' }}>
               Where did this happen?
             </h3>
-            <div className="h-full max-h-80">
+            <div>
               <LocationPicker 
                 onLocationSelect={handleLocationSelect}
                 initialLocation={location.lat ? location : null}

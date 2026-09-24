@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -29,6 +29,19 @@ const actualIcon = new L.Icon({
   popupAnchor: [1, -34],
   shadowSize: [41, 41]
 });
+
+// Keeps Leaflet in sync when its container changes size (rotation, iPad split view, window resize)
+const MapResizeHandler = () => {
+  const map = useMap();
+  useEffect(() => {
+    const container = map.getContainer();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+};
 
 const GuessMarker = ({ onGuess, disabled }) => {
   useMapEvents({
@@ -73,11 +86,11 @@ const GuessMap = ({
   }, [showResult, guessPosition, actualPosition]);
 
   return (
-    <div className="w-full rounded-lg overflow-hidden border border-gray-300" style={{ height: '400px' }}>
+    <div className="w-full h-full rounded-lg overflow-hidden border border-gray-300">
       <MapContainer
         center={[20, 0]} // Center on world view
         zoom={2}
-        style={{ height: '400px', width: '100%' }}
+        style={{ height: '100%', width: '100%' }}
         ref={mapRef}
         whenReady={() => {
           setTimeout(() => {
@@ -94,6 +107,7 @@ const GuessMap = ({
           subdomains="abcd"
         />
         
+        <MapResizeHandler />
         <GuessMarker onGuess={onGuess} disabled={disabled} />
         
         {/* Show guess marker */}

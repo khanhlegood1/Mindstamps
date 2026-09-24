@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -10,6 +10,19 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
+
+// Keeps Leaflet in sync when its container changes size (rotation, iPad split view, window resize)
+const MapResizeHandler = () => {
+  const map = useMap();
+  useEffect(() => {
+    const container = map.getContainer();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+};
 
 const LocationMarker = ({ position, setPosition, setLocationName }) => {
   const map = useMapEvents({
@@ -132,19 +145,19 @@ const LocationPicker = ({ onLocationSelect, initialLocation = null }) => {
           onChange={(e) => setAddressSearch(e.target.value)}
           onKeyPress={handleSearchKeyPress}
           placeholder="Enter an address (e.g., 123 Main St, New York, NY)"
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 min-w-0 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <button
           type="button"
           onClick={searchAddress}
           disabled={searchLoading}
-          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+          className="flex-shrink-0 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
         >
           {searchLoading ? '...' : 'Search'}
         </button>
       </div>
       
-      <div className="h-80 w-full rounded-lg overflow-hidden border border-gray-300">
+      <div className="w-full rounded-lg overflow-hidden border border-gray-300" style={{ height: 'clamp(260px, 45dvh, 340px)' }}>
         <MapContainer
           center={position || [40.7128, -74.0060]} // Default to NYC
           zoom={position ? 13 : 2}
@@ -165,6 +178,7 @@ const LocationPicker = ({ onLocationSelect, initialLocation = null }) => {
             maxZoom={20}
             subdomains="abcd"
           />
+          <MapResizeHandler />
           <LocationMarker 
             position={position} 
             setPosition={handleLocationChange}
@@ -184,7 +198,7 @@ const LocationPicker = ({ onLocationSelect, initialLocation = null }) => {
       )}
       
       <div className="text-sm text-gray-600">
-        💡 Click anywhere on the map to select a location
+        💡 Tap or click anywhere on the map to select a location
       </div>
     </div>
   );

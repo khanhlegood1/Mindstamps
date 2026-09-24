@@ -1,33 +1,43 @@
-import { useState, useEffect } from 'react';
+import { useRef } from 'react';
 
+const IGNORED_TAGS = ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'];
+
+// Horizontal swipe detection for touch screens (iPhone / iPad).
+// - ignores gestures that start on form controls (text selection, cursor moves)
+// - ignores mostly-vertical gestures, so normal scrolling never flips a page
 const useSwipeGesture = (onSwipeLeft, onSwipeRight, threshold = 50) => {
-  const [touchStart, setTouchStart] = useState(null);
-  const [touchEnd, setTouchEnd] = useState(null);
-
-  const minSwipeDistance = threshold;
+  const start = useRef(null);
+  const last = useRef(null);
 
   const onTouchStart = (e) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
+    const target = e.target;
+    if (target && (IGNORED_TAGS.includes(target.tagName) || target.isContentEditable)) {
+      start.current = null;
+      return;
+    }
+    const t = e.targetTouches[0];
+    start.current = { x: t.clientX, y: t.clientY };
+    last.current = { x: t.clientX, y: t.clientY };
   };
 
   const onTouchMove = (e) => {
-    setTouchEnd(e.targetTouches[0].clientX);
+    if (!start.current) return;
+    const t = e.targetTouches[0];
+    last.current = { x: t.clientX, y: t.clientY };
   };
 
   const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
+    if (!start.current || !last.current) return;
 
-    if (isLeftSwipe && onSwipeLeft) {
-      onSwipeLeft();
-    }
-    if (isRightSwipe && onSwipeRight) {
-      onSwipeRight();
-    }
+    const dx = start.current.x - last.current.x;
+    const dy = start.current.y - last.current.y;
+    start.current = null;
+
+    // Must be far enough and clearly more horizontal than vertical
+    if (Math.abs(dx) < threshold || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+
+    if (dx > 0 && onSwipeLeft) onSwipeLeft();
+    if (dx < 0 && onSwipeRight) onSwipeRight();
   };
 
   return {
