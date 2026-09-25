@@ -132,7 +132,7 @@ const Play = () => {
   if (!user) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="paper-texture cozy-shadow rounded-2xl p-8 text-center">
+        <div className="paper-texture cozy-shadow rounded-2xl p-6 sm:p-8 text-center">
           <h1 className="text-2xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
             Hey there, you'll need to sign in first
           </h1>
@@ -147,7 +147,7 @@ const Play = () => {
   if (gameState === 'loading') {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="paper-texture cozy-shadow rounded-2xl p-8 flex items-center space-x-4">
+        <div className="paper-texture cozy-shadow rounded-2xl p-6 sm:p-8 flex items-center space-x-4">
           <div className="animate-spin w-8 h-8 border-3 border-t-transparent rounded-full" style={{ borderColor: 'var(--dusty-rose)' }}></div>
           <div className="text-xl font-journal" style={{ color: 'var(--deep-brown)' }}>
             Flipping through your pages...
@@ -161,7 +161,7 @@ const Play = () => {
   if (gameState !== 'no-memories' && gameState !== 'finished' && gameState !== 'playing' && gameState !== 'result') {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="paper-texture cozy-shadow rounded-2xl p-8 text-center">
+        <div className="paper-texture cozy-shadow rounded-2xl p-6 sm:p-8 text-center">
           <h1 className="text-2xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
             Debug Info
           </h1>
@@ -220,7 +220,7 @@ const Play = () => {
               You made it through all your memories. That was fun, wasn't it?
             </p>
 
-            <div className="paper-texture cozy-shadow rounded-2xl p-8 mb-8">
+            <div className="paper-texture cozy-shadow rounded-2xl p-6 sm:p-8 mb-8">
               <div className="text-5xl md:text-6xl font-bold mb-4" style={{ color: 'var(--dusty-rose)' }}>{score}</div>
               <div className="text-xl mb-4" style={{ color: 'var(--warm-brown)' }}>points total</div>
               <div className="text-lg" style={{ color: 'var(--deep-brown)' }}>
@@ -268,7 +268,7 @@ const Play = () => {
   if (gameState === 'playing' && !currentMemory) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="paper-texture cozy-shadow rounded-2xl p-8 text-center">
+        <div className="paper-texture cozy-shadow rounded-2xl p-6 sm:p-8 text-center">
           <h1 className="text-2xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
             Hmm, something's not quite right
           </h1>
@@ -423,7 +423,7 @@ const Play = () => {
         </>
       ) : (
         <div className="flex-1 flex items-center justify-center">
-          <div className="paper-texture cozy-shadow rounded-2xl p-8 text-center">
+          <div className="paper-texture cozy-shadow rounded-2xl p-6 sm:p-8 text-center">
             <h2 className="text-xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
               Looking for your memory...
             </h2>

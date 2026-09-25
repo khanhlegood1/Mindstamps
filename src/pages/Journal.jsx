@@ -644,7 +644,7 @@ const Journal = () => {
   if (!user) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="paper-texture cozy-shadow rounded-2xl p-8 text-center">
+        <div className="paper-texture cozy-shadow rounded-2xl p-6 sm:p-8 text-center">
           <h1 className="text-2xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
             You'll need to sign in first
           </h1>
@@ -666,7 +666,7 @@ const Journal = () => {
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="paper-texture cozy-shadow rounded-2xl p-8 flex items-center space-x-4">
+        <div className="paper-texture cozy-shadow rounded-2xl p-6 sm:p-8 flex items-center space-x-4">
           <div className="animate-spin w-8 h-8 border-3 border-t-transparent rounded-full" style={{ borderColor: 'var(--dusty-rose)' }}></div>
           <div className="text-xl font-journal" style={{ color: 'var(--deep-brown)' }}>
             Finding your pages...
@@ -785,12 +785,12 @@ const Journal = () => {
           />
         ) : (
           <>
-            <div className="paper-texture h-full p-8 border-r border-opacity-20 flex items-center justify-center" style={{ borderColor: 'var(--warm-brown)' }}>
+            <div className="paper-texture h-full p-6 sm:p-8 border-r border-opacity-20 flex items-center justify-center" style={{ borderColor: 'var(--warm-brown)' }}>
               <div className="text-center opacity-30">
                 <p className="font-journal" style={{ color: 'var(--warm-brown)' }}>Empty page</p>
               </div>
             </div>
-            <div className="paper-texture h-full p-8 flex items-center justify-center">
+            <div className="paper-texture h-full p-6 sm:p-8 flex items-center justify-center">
               <div className="text-center opacity-30">
                 <p className="font-journal" style={{ color: 'var(--warm-brown)' }}>Empty page</p>
               </div>

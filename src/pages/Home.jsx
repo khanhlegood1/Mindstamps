@@ -12,7 +12,7 @@ const Home = () => {
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="paper-texture cozy-shadow rounded-2xl p-8 flex items-center space-x-4">
+        <div className="paper-texture cozy-shadow rounded-2xl p-6 sm:p-8 flex items-center space-x-4">
           <div className="animate-spin w-8 h-8 border-3 border-t-transparent rounded-full" style={{ borderColor: 'var(--dusty-rose)' }}></div>
           <div className="text-xl font-journal" style={{ color: 'var(--deep-brown)' }}>
             Just a moment...
@@ -57,7 +57,7 @@ const Home = () => {
           />
         ) : (
           <div className="max-w-lg text-center z-10">
-            <div className="paper-texture cozy-shadow rounded-2xl p-8 mb-8">
+            <div className="paper-texture cozy-shadow rounded-2xl p-6 sm:p-8 mb-8">
               <h2 className="text-2xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
                 Your journal
               </h2>
@@ -72,7 +72,7 @@ const Home = () => {
               </a>
             </div>
 
-            <div className="paper-texture cozy-shadow rounded-2xl p-8">
+            <div className="paper-texture cozy-shadow rounded-2xl p-6 sm:p-8">
               <h2 className="text-2xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
                 Want to play?
               </h2>

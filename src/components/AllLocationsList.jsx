@@ -70,7 +70,7 @@ const AllLocationsList = ({ onSelect, selectedId }) => {
   }, []);
 
   return (
-    <div className="paper-texture cozy-shadow rounded-2xl p-8">
+    <div className="paper-texture cozy-shadow rounded-2xl p-6 sm:p-8">
       <h2 className="text-2xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
         Places everyone has saved
       </h2>

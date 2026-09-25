@@ -70,7 +70,7 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
   };
 
   return (
-    <div className="paper-texture cozy-shadow rounded-2xl p-8 w-full max-w-lg text-left relative">
+    <div className="paper-texture cozy-shadow rounded-2xl p-6 sm:p-8 w-full max-w-lg text-left relative">
       {/* Top bar: back + EDITING button, always at the top of the right page */}
       <div className="flex items-center justify-between mb-6">
         <button
