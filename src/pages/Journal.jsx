@@ -5,11 +5,13 @@ import { auth, db } from '../config/firebase';
 import CreateMemory from './CreateMemory';
 import { replaceSampleMemories } from '../utils/sampleData';
 import MobileNavigation from '../components/MobileNavigation';
+import MemoryLocationMap from '../components/MemoryLocationMap';
 import useSwipeGesture from '../hooks/useSwipeGesture';
 
 const MemoryPage = ({ memory, isLeft = true, onEdit, onSave, onCancelEdit, onDelete, isEditing = false }) => {
   const [editTitle, setEditTitle] = useState(memory.title);
   const [editStory, setEditStory] = useState(memory.story);
+  const [editLocation, setEditLocation] = useState(memory.location || null);
   const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -17,7 +19,8 @@ const MemoryPage = ({ memory, isLeft = true, onEdit, onSave, onCancelEdit, onDel
   useEffect(() => {
     setEditTitle(memory.title);
     setEditStory(memory.story);
-  }, [memory.id, memory.title, memory.story]);
+    setEditLocation(memory.location || null);
+  }, [memory.id, memory.title, memory.story, memory.location]);
 
   // Log when MemoryPage receives isEditing prop changes
   useEffect(() => {
@@ -51,7 +54,8 @@ const MemoryPage = ({ memory, isLeft = true, onEdit, onSave, onCancelEdit, onDel
     try {
       await onSave(memory.id, {
         title: editTitle.trim(),
-        story: editStory.trim()
+        story: editStory.trim(),
+        location: editLocation
       });
     } catch (error) {
       console.error('Error saving memory:', error);
@@ -64,6 +68,7 @@ const MemoryPage = ({ memory, isLeft = true, onEdit, onSave, onCancelEdit, onDel
   const handleCancel = () => {
     setEditTitle(memory.title);
     setEditStory(memory.story);
+    setEditLocation(memory.location || null);
     setShowDeleteConfirm(false);
     onCancelEdit();
   };
@@ -125,33 +130,45 @@ const MemoryPage = ({ memory, isLeft = true, onEdit, onSave, onCancelEdit, onDel
             style={{ color: 'var(--deep-brown)' }}
             placeholder="Memory title..."
           />
-          
-          {memory.imageData && (
-            <div className="relative flex-shrink-0">
-              <img
-                src={memory.imageData}
-                alt={memory.title}
-                className="w-full h-32 object-cover rounded-lg shadow-md"
-                style={{ filter: 'sepia(10%) saturate(90%)' }}
+
+          <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
+            {/* Left: image + story */}
+            <div className="flex flex-col flex-1 min-h-0 space-y-4">
+              {memory.imageData && (
+                <div className="relative flex-shrink-0">
+                  <img
+                    src={memory.imageData}
+                    alt={memory.title}
+                    className="w-full h-32 object-cover rounded-lg shadow-md"
+                    style={{ filter: 'sepia(10%) saturate(90%)' }}
+                  />
+                  <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center">
+                    <div className="w-2 h-2 rounded-full" style={{ background: 'var(--dusty-rose)' }}></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Story textarea - takes remaining space */}
+              <textarea
+                value={editStory}
+                onChange={(e) => setEditStory(e.target.value)}
+                className="flex-1 font-journal leading-relaxed text-base bg-transparent border-none outline-none resize-none w-full min-h-[10rem]"
+                style={{ color: 'var(--ink-black)' }}
+                placeholder="Tell your story..."
               />
-              <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center">
-                <div className="w-2 h-2 rounded-full" style={{ background: 'var(--dusty-rose)' }}></div>
+            </div>
+
+            {/* Right: editable location map */}
+            <div className="w-full md:w-56 lg:w-64 flex-shrink-0 space-y-2">
+              <MemoryLocationMap
+                location={editLocation}
+                editable
+                onLocationChange={setEditLocation}
+              />
+              <div className="text-xs font-medium" style={{ color: 'var(--warm-brown)' }}>
+                {editLocation?.name || 'No location set'}
               </div>
             </div>
-          )}
-          
-          {/* Story textarea - takes remaining space */}
-          <textarea
-            value={editStory}
-            onChange={(e) => setEditStory(e.target.value)}
-            className="flex-1 font-journal leading-relaxed text-base bg-transparent border-none outline-none resize-none w-full min-h-[12rem]"
-            style={{ color: 'var(--ink-black)' }}
-            placeholder="Tell your story..."
-          />
-          
-          {/* Location - fixed at bottom of content */}
-          <div className="text-sm font-medium flex-shrink-0" style={{ color: 'var(--warm-brown)' }}>
-            {memory.location?.name || 'Somewhere special'}
           </div>
 
           {/* Edit buttons - fixed within page content area */}
@@ -231,29 +248,38 @@ const MemoryPage = ({ memory, isLeft = true, onEdit, onSave, onCancelEdit, onDel
         <h3 className="text-2xl font-journal font-semibold leading-tight" style={{ color: 'var(--deep-brown)' }}>
           {memory.title}
         </h3>
-        
-        {memory.imageData && (
-          <div className="relative">
-            <img
-              src={memory.imageData}
-              alt={memory.title}
-              className="w-full h-48 object-cover rounded-lg shadow-md"
-              style={{ filter: 'sepia(10%) saturate(90%)' }}
-            />
-            <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center">
-              <div className="w-2 h-2 rounded-full" style={{ background: 'var(--dusty-rose)' }}></div>
+
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Left: image + story */}
+          <div className="flex-1 space-y-6 min-w-0">
+            {memory.imageData && (
+              <div className="relative">
+                <img
+                  src={memory.imageData}
+                  alt={memory.title}
+                  className="w-full h-48 object-cover rounded-lg shadow-md"
+                  style={{ filter: 'sepia(10%) saturate(90%)' }}
+                />
+                <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full" style={{ background: 'var(--dusty-rose)' }}></div>
+                </div>
+              </div>
+            )}
+
+            <div className="prose prose-sm">
+              <p className="font-journal leading-relaxed text-base" style={{ color: 'var(--ink-black)' }}>
+                {memory.story}
+              </p>
             </div>
           </div>
-        )}
-        
-        <div className="prose prose-sm">
-          <p className="font-journal leading-relaxed text-base" style={{ color: 'var(--ink-black)' }}>
-            {memory.story}
-          </p>
-        </div>
-        
-        <div className="text-sm font-medium" style={{ color: 'var(--warm-brown)' }}>
-          {memory.location?.name || 'Somewhere special'}
+
+          {/* Right: location map */}
+          <div className="w-full md:w-56 lg:w-64 flex-shrink-0 space-y-2">
+            <MemoryLocationMap location={memory.location} editable={false} />
+            <div className="text-sm font-medium" style={{ color: 'var(--warm-brown)' }}>
+              {memory.location?.name || 'Somewhere special'}
+            </div>
+          </div>
         </div>
       </div>
     </div>
