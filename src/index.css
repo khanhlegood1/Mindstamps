@@ -17,6 +17,11 @@
 html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* Safety net: nothing on the page should ever be able to push the
+     viewport sideways on a phone (this is what causes text to look
+     "cut off" on one edge with blank space on the other). */
+  overflow-x: hidden;
+  width: 100%;
 }
 
 body {
@@ -32,11 +37,17 @@ body {
   -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
   min-height: 100dvh;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
 }
 
 #root {
   min-height: 100vh;
   min-height: 100dvh;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
 }
 
 /* Typography */
@@ -318,14 +329,17 @@ body {
     height: auto;
     min-height: 100vh;
     min-height: 100dvh;
-    overflow: visible;
+    overflow-y: visible;
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
   .cozy-container > main {
     display: flex;
     flex-direction: column;
     flex: 1 0 auto;
-    overflow: visible;
+    overflow-y: visible;
+    overflow-x: hidden;
   }
 
   .cozy-container > main > * {
@@ -338,7 +352,8 @@ body {
   }
 
   .side-by-side > div {
-    overflow: visible;
+    overflow-y: visible;
+    overflow-x: hidden;
   }
 
   /* Hide spine on compact screens */
