@@ -11,7 +11,10 @@ const formatDate = (timestamp) => {
 // Shows every saved location across all users (not just the current one).
 // Requires Firestore security rules to allow reading the `memories`
 // collection beyond the owner-only default — see README / setup notes.
-const AllLocationsList = () => {
+//
+// onSelect(memory) is called with the full memory record when a row is
+// clicked, so the caller (Home page) can open a detail view for it.
+const AllLocationsList = ({ onSelect, selectedId }) => {
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -35,8 +38,12 @@ const AllLocationsList = () => {
               name: data.location?.name || null,
               lat: data.location?.lat,
               lng: data.location?.lng,
+              location: data.location || null,
               title: data.title || null,
+              story: data.story || '',
+              imageData: data.imageData || null,
               createdAt: data.createdAt || null,
+              userId: data.userId || null,
             };
           })
           .filter((item) => typeof item.lat === 'number' && typeof item.lng === 'number');
@@ -88,27 +95,36 @@ const AllLocationsList = () => {
             {locations.length} {locations.length === 1 ? 'place' : 'places'} saved across all users
           </p>
           <ul className="space-y-3 max-h-72 overflow-y-auto pr-1">
-            {locations.map((loc) => (
-              <li
-                key={loc.id}
-                className="flex items-start justify-between gap-3 pb-3 border-b border-opacity-20"
-                style={{ borderColor: 'var(--warm-brown)' }}
-              >
-                <div className="min-w-0">
-                  <div className="font-medium truncate" style={{ color: 'var(--deep-brown)' }}>
-                    {loc.name || `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}`}
-                  </div>
-                  {loc.title && (
-                    <div className="text-sm truncate" style={{ color: 'var(--warm-brown)' }}>
-                      {loc.title}
+            {locations.map((loc) => {
+              const isSelected = selectedId === loc.id;
+              return (
+                <li key={loc.id}>
+                  <button
+                    type="button"
+                    onClick={() => onSelect && onSelect(loc)}
+                    className="w-full flex items-start justify-between gap-3 pb-3 pt-1 px-2 -mx-2 border-b border-opacity-20 text-left rounded-lg transition-colors duration-200"
+                    style={{
+                      borderColor: 'var(--warm-brown)',
+                      background: isSelected ? 'rgba(180, 83, 9, 0.08)' : 'transparent',
+                    }}
+                  >
+                    <div className="min-w-0">
+                      <div className="font-medium truncate" style={{ color: 'var(--deep-brown)' }}>
+                        {loc.name || `${loc.lat.toFixed(4)}, ${loc.lng.toFixed(4)}`}
+                      </div>
+                      {loc.title && (
+                        <div className="text-sm truncate" style={{ color: 'var(--warm-brown)' }}>
+                          {loc.title}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <div className="text-xs whitespace-nowrap flex-shrink-0" style={{ color: 'var(--warm-brown)' }}>
-                  {formatDate(loc.createdAt)}
-                </div>
-              </li>
-            ))}
+                    <div className="text-xs whitespace-nowrap flex-shrink-0" style={{ color: 'var(--warm-brown)' }}>
+                      {formatDate(loc.createdAt)}
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </>
       )}
