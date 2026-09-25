@@ -1,145 +1,162 @@
-import { useState, useRef, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents, Polyline } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+import { useRef, useEffect } from 'react';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { MAPBOX_TOKEN, MAPBOX_STYLE } from '../../config/mapbox';
 
-// Fix for default markers in react-leaflet
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+mapboxgl.accessToken = MAPBOX_TOKEN;
 
-// Custom icons for different marker types
-const guessIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+const ROUTE_SOURCE_ID = 'guess-route';
+const ROUTE_LAYER_ID = 'guess-route-line';
 
-const actualIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
-
-// Keeps Leaflet in sync when its container changes size (rotation, iPad split view, window resize)
-const MapResizeHandler = () => {
-  const map = useMap();
-  useEffect(() => {
-    const container = map.getContainer();
-    if (typeof ResizeObserver === 'undefined') return undefined;
-    const observer = new ResizeObserver(() => map.invalidateSize());
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [map]);
-  return null;
+const createMarkerEl = (color) => {
+  const el = document.createElement('div');
+  el.style.width = '25px';
+  el.style.height = '25px';
+  el.style.borderRadius = '50% 50% 50% 0';
+  el.style.transform = 'rotate(-45deg)';
+  el.style.background = color;
+  el.style.border = '2px solid white';
+  el.style.boxShadow = '0 1px 4px rgba(0,0,0,0.4)';
+  return el;
 };
 
-const GuessMarker = ({ onGuess, disabled }) => {
-  useMapEvents({
-    click(e) {
-      if (!disabled) {
-        const { lat, lng } = e.latlng;
-        onGuess({ lat, lng });
-      }
-    },
-  });
-  return null;
-};
-
-const GuessMap = ({ 
-  onGuess, 
-  guessPosition = null, 
-  actualPosition = null, 
+const GuessMap = ({
+  onGuess,
+  guessPosition = null,
+  actualPosition = null,
   showResult = false,
-  disabled = false 
+  disabled = false,
 }) => {
-  const mapRef = useRef();
+  const containerRef = useRef(null);
+  const mapRef = useRef(null);
+  const guessMarkerRef = useRef(null);
+  const actualMarkerRef = useRef(null);
+  const onGuessRef = useRef(onGuess);
+  const disabledRef = useRef(disabled);
 
-  // Fix map rendering issues
+  onGuessRef.current = onGuess;
+  disabledRef.current = disabled;
+
+  // Initialize map once
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (mapRef.current) {
-        mapRef.current.invalidateSize();
+    if (!containerRef.current || mapRef.current) return undefined;
+
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: MAPBOX_STYLE,
+      center: [0, 20], // [lng, lat]
+      zoom: 1,
+      attributionControl: true,
+    });
+    mapRef.current = map;
+
+    map.on('click', (e) => {
+      if (!disabledRef.current && onGuessRef.current) {
+        onGuessRef.current({ lat: e.lngLat.lat, lng: e.lngLat.lng });
       }
-    }, 100);
-    return () => clearTimeout(timer);
+    });
+
+    const resizeObserver = new ResizeObserver(() => map.resize());
+    resizeObserver.observe(containerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+      map.remove();
+      mapRef.current = null;
+    };
   }, []);
 
-  // Fit map to show both markers when result is shown
+  // Guess marker
   useEffect(() => {
-    if (showResult && guessPosition && actualPosition && mapRef.current) {
-      const bounds = L.latLngBounds([
-        [guessPosition.lat, guessPosition.lng],
-        [actualPosition.lat, actualPosition.lng]
-      ]);
-      mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (guessMarkerRef.current) {
+      guessMarkerRef.current.remove();
+      guessMarkerRef.current = null;
+    }
+
+    if (guessPosition) {
+      guessMarkerRef.current = new mapboxgl.Marker({ element: createMarkerEl('#2563eb') })
+        .setLngLat([guessPosition.lng, guessPosition.lat])
+        .addTo(map);
+    }
+  }, [guessPosition]);
+
+  // Actual marker
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (actualMarkerRef.current) {
+      actualMarkerRef.current.remove();
+      actualMarkerRef.current = null;
+    }
+
+    if (showResult && actualPosition) {
+      actualMarkerRef.current = new mapboxgl.Marker({ element: createMarkerEl('#dc2626') })
+        .setLngLat([actualPosition.lng, actualPosition.lat])
+        .addTo(map);
+    }
+  }, [showResult, actualPosition]);
+
+  // Route line + fit bounds when result is shown
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return undefined;
+
+    const drawRoute = () => {
+      const existingSource = map.getSource(ROUTE_SOURCE_ID);
+
+      if (showResult && guessPosition && actualPosition) {
+        const geojson = {
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: [
+              [guessPosition.lng, guessPosition.lat],
+              [actualPosition.lng, actualPosition.lat],
+            ],
+          },
+        };
+
+        if (existingSource) {
+          existingSource.setData(geojson);
+        } else {
+          map.addSource(ROUTE_SOURCE_ID, { type: 'geojson', data: geojson });
+          map.addLayer({
+            id: ROUTE_LAYER_ID,
+            type: 'line',
+            source: ROUTE_SOURCE_ID,
+            paint: {
+              'line-color': '#dc2626',
+              'line-width': 3,
+              'line-opacity': 0.7,
+              'line-dasharray': [2, 2],
+            },
+          });
+        }
+
+        const bounds = new mapboxgl.LngLatBounds();
+        bounds.extend([guessPosition.lng, guessPosition.lat]);
+        bounds.extend([actualPosition.lng, actualPosition.lat]);
+        map.fitBounds(bounds, { padding: 50, animate: true, duration: 500 });
+      } else if (existingSource) {
+        if (map.getLayer(ROUTE_LAYER_ID)) map.removeLayer(ROUTE_LAYER_ID);
+        map.removeSource(ROUTE_SOURCE_ID);
+      }
+    };
+
+    if (map.isStyleLoaded()) {
+      drawRoute();
+    } else {
+      map.once('load', drawRoute);
     }
   }, [showResult, guessPosition, actualPosition]);
 
   return (
     <div className="w-full h-full rounded-lg overflow-hidden border border-gray-300">
-      <MapContainer
-        center={[20, 0]} // Center on world view
-        zoom={2}
-        style={{ height: '100%', width: '100%' }}
-        ref={mapRef}
-        whenReady={() => {
-          setTimeout(() => {
-            if (mapRef.current) {
-              mapRef.current.invalidateSize();
-            }
-          }, 100);
-        }}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-          url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-          maxZoom={20}
-          subdomains="abcd"
-        />
-        
-        <MapResizeHandler />
-        <GuessMarker onGuess={onGuess} disabled={disabled} />
-        
-        {/* Show guess marker */}
-        {guessPosition && (
-          <Marker 
-            position={[guessPosition.lat, guessPosition.lng]} 
-            icon={guessIcon}
-          />
-        )}
-        
-        {/* Show actual location when revealing result */}
-        {showResult && actualPosition && (
-          <Marker 
-            position={[actualPosition.lat, actualPosition.lng]} 
-            icon={actualIcon}
-          />
-        )}
-        
-        {/* Draw line between guess and actual location */}
-        {showResult && guessPosition && actualPosition && (
-          <Polyline
-            positions={[
-              [guessPosition.lat, guessPosition.lng],
-              [actualPosition.lat, actualPosition.lng]
-            ]}
-            color="red"
-            weight={3}
-            opacity={0.7}
-            dashArray="5, 10"
-          />
-        )}
-      </MapContainer>
+      <div ref={containerRef} style={{ height: '100%', width: '100%' }} />
     </div>
   );
 };

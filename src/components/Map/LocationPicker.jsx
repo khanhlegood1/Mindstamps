@@ -1,50 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { MAPBOX_TOKEN, MAPBOX_STYLE } from '../../config/mapbox';
 
-// Fix for default markers in react-leaflet
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+mapboxgl.accessToken = MAPBOX_TOKEN;
 
-// Keeps Leaflet in sync when its container changes size (rotation, iPad split view, window resize)
-const MapResizeHandler = () => {
-  const map = useMap();
-  useEffect(() => {
-    const container = map.getContainer();
-    if (typeof ResizeObserver === 'undefined') return undefined;
-    const observer = new ResizeObserver(() => map.invalidateSize());
-    observer.observe(container);
-    return () => observer.disconnect();
-  }, [map]);
-  return null;
-};
-
-const LocationMarker = ({ position, setPosition, setLocationName }) => {
-  const map = useMapEvents({
-    click(e) {
-      const { lat, lng } = e.latlng;
-      setPosition([lat, lng]);
-      
-      // Reverse geocoding to get location name (simplified)
-      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
-        .then(response => response.json())
-        .then(data => {
-          const name = data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-          setLocationName(name);
-        })
-        .catch(() => {
-          setLocationName(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-        });
-    },
-  });
-
-  return position ? <Marker position={position} /> : null;
-};
+const GEOCODING_BASE = 'https://api.mapbox.com/geocoding/v5/mapbox.places';
 
 const LocationPicker = ({ onLocationSelect, initialLocation = null }) => {
   const [position, setPosition] = useState(
@@ -53,45 +14,83 @@ const LocationPicker = ({ onLocationSelect, initialLocation = null }) => {
   const [locationName, setLocationName] = useState(initialLocation?.name || '');
   const [addressSearch, setAddressSearch] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
-  const mapRef = useRef();
 
-  // Fix map rendering issues
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (mapRef.current) {
-        mapRef.current.invalidateSize();
-      }
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
+  const containerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markerRef = useRef(null);
 
-  const handleLocationChange = (newPosition) => {
-    setPosition(newPosition);
+  const reverseGeocode = (lat, lng) => {
+    const url = `${GEOCODING_BASE}/${lng},${lat}.json?access_token=${MAPBOX_TOKEN}&limit=1`;
+    fetch(url)
+      .then((res) => res.json())
+      .then((data) => {
+        const name = data?.features?.[0]?.place_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        setLocationName(name);
+      })
+      .catch(() => {
+        setLocationName(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+      });
   };
 
-  const handleLocationNameChange = (name) => {
-    setLocationName(name);
-    if (position && onLocationSelect) {
-      onLocationSelect({
-        lat: position[0],
-        lng: position[1],
-        name: name
-      });
+  const placeMarker = (lat, lng, map) => {
+    if (markerRef.current) {
+      markerRef.current.setLngLat([lng, lat]);
+    } else {
+      markerRef.current = new mapboxgl.Marker({ color: '#2563eb' })
+        .setLngLat([lng, lat])
+        .addTo(map);
     }
   };
 
-  // Update parent when position changes
+  // Initialize map once
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return undefined;
+
+    const startCenter = position ? [position[1], position[0]] : [-74.006, 40.7128]; // NYC default
+    const startZoom = position ? 13 : 1;
+
+    const map = new mapboxgl.Map({
+      container: containerRef.current,
+      style: MAPBOX_STYLE,
+      center: startCenter,
+      zoom: startZoom,
+    });
+    mapRef.current = map;
+
+    if (position) {
+      map.once('load', () => placeMarker(position[0], position[1], map));
+    }
+
+    map.on('click', (e) => {
+      const { lat, lng } = e.lngLat;
+      setPosition([lat, lng]);
+      placeMarker(lat, lng, map);
+      reverseGeocode(lat, lng);
+    });
+
+    const resizeObserver = new ResizeObserver(() => map.resize());
+    resizeObserver.observe(containerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+      map.remove();
+      mapRef.current = null;
+      markerRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Notify parent when position/name changes
   useEffect(() => {
     if (position && locationName && onLocationSelect) {
       onLocationSelect({
         lat: position[0],
         lng: position[1],
-        name: locationName
+        name: locationName,
       });
     }
   }, [position, locationName, onLocationSelect]);
 
-  // Address search function
   const searchAddress = async () => {
     if (!addressSearch.trim()) {
       alert('Please enter an address to search');
@@ -100,22 +99,21 @@ const LocationPicker = ({ onLocationSelect, initialLocation = null }) => {
 
     setSearchLoading(true);
     try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressSearch)}&limit=1`
-      );
+      const url = `${GEOCODING_BASE}/${encodeURIComponent(addressSearch)}.json?access_token=${MAPBOX_TOKEN}&limit=1`;
+      const response = await fetch(url);
       const data = await response.json();
-      
-      if (data && data.length > 0) {
-        const result = data[0];
-        const lat = parseFloat(result.lat);
-        const lng = parseFloat(result.lon);
-        
+
+      if (data?.features?.length > 0) {
+        const result = data.features[0];
+        const [lng, lat] = result.center;
+
         setPosition([lat, lng]);
-        setLocationName(result.display_name);
-        
-        // Center map on found location
-        if (mapRef.current) {
-          mapRef.current.setView([lat, lng], 15);
+        setLocationName(result.place_name);
+
+        const map = mapRef.current;
+        if (map) {
+          placeMarker(lat, lng, map);
+          map.flyTo({ center: [lng, lat], zoom: 15, animate: true, duration: 800 });
         }
       } else {
         alert('Address not found. Please try a different search term.');
@@ -127,7 +125,6 @@ const LocationPicker = ({ onLocationSelect, initialLocation = null }) => {
     setSearchLoading(false);
   };
 
-  // Handle Enter key in search input
   const handleSearchKeyPress = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -156,37 +153,14 @@ const LocationPicker = ({ onLocationSelect, initialLocation = null }) => {
           {searchLoading ? '...' : 'Search'}
         </button>
       </div>
-      
-      <div className="w-full rounded-lg overflow-hidden border border-gray-300" style={{ height: 'clamp(260px, 45dvh, 340px)' }}>
-        <MapContainer
-          center={position || [40.7128, -74.0060]} // Default to NYC
-          zoom={position ? 13 : 2}
-          style={{ height: '100%', width: '100%' }}
-          ref={mapRef}
-          whenReady={() => {
-            // Force map to recalculate size when ready
-            setTimeout(() => {
-              if (mapRef.current) {
-                mapRef.current.invalidateSize();
-              }
-            }, 100);
-          }}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-            maxZoom={20}
-            subdomains="abcd"
-          />
-          <MapResizeHandler />
-          <LocationMarker 
-            position={position} 
-            setPosition={handleLocationChange}
-            setLocationName={handleLocationNameChange}
-          />
-        </MapContainer>
+
+      <div
+        className="w-full rounded-lg overflow-hidden border border-gray-300"
+        style={{ height: 'clamp(260px, 45dvh, 340px)' }}
+      >
+        <div ref={containerRef} style={{ height: '100%', width: '100%' }} />
       </div>
-      
+
       {position && (
         <div className="bg-gray-50 p-4 rounded-lg">
           <div className="text-sm text-gray-600 mb-2">Selected Location:</div>
@@ -196,7 +170,7 @@ const LocationPicker = ({ onLocationSelect, initialLocation = null }) => {
           </div>
         </div>
       )}
-      
+
       <div className="text-sm text-gray-600">
         💡 Tap or click anywhere on the map to select a location
       </div>
