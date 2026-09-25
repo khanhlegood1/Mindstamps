@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import MemoryLocationMap from './MemoryLocationMap';
+import StreetView from './StreetView';
 
 const formatDate = (timestamp) => {
   if (!timestamp) return 'A moment in time';
@@ -22,6 +23,9 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
   const [editTitle, setEditTitle] = useState(memory.title || '');
   const [editStory, setEditStory] = useState(memory.story || '');
   const [editLocation, setEditLocation] = useState(memory.location || null);
+  const [editImageryType, setEditImageryType] = useState(memory.imageType || 'photo');
+  const [editImage, setEditImage] = useState(null);
+  const [editImagePreview, setEditImagePreview] = useState(memory.imageData || null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -29,7 +33,20 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
     setEditTitle(memory.title || '');
     setEditStory(memory.story || '');
     setEditLocation(memory.location || null);
-  }, [memory.id]);
+    setEditImageryType(memory.imageType || 'photo');
+    setEditImage(null);
+    setEditImagePreview(memory.imageData || null);
+  }, [memory.id, memory.imageType, memory.imageData]);
+
+  const handleEditImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setEditImage(file);
+      const reader = new FileReader();
+      reader.onload = (ev) => setEditImagePreview(ev.target.result);
+      reader.readAsDataURL(file);
+    }
+  };
 
   const isOwner = currentUserId && memory.userId && currentUserId === memory.userId;
 
@@ -40,15 +57,30 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
     }
     setSaving(true);
     try {
+      let imageData = memory.imageData || null;
+      if (editImageryType === 'streetview') {
+        imageData = null;
+      } else if (editImage) {
+        const reader = new FileReader();
+        imageData = await new Promise((resolve) => {
+          reader.onload = (ev) => resolve(ev.target.result);
+          reader.readAsDataURL(editImage);
+        });
+      }
+
       const memoryRef = doc(db, 'memories', memory.id);
       await updateDoc(memoryRef, {
         title: editTitle.trim(),
         story: editStory.trim(),
         location: editLocation,
+        imageType: editImageryType,
+        imageData,
       });
       memory.title = editTitle.trim();
       memory.story = editStory.trim();
       memory.location = editLocation;
+      memory.imageType = editImageryType;
+      memory.imageData = imageData;
       setIsEditing(false);
     } catch (error) {
       console.error('Error saving memory:', error);
@@ -66,6 +98,9 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
     setEditTitle(memory.title || '');
     setEditStory(memory.story || '');
     setEditLocation(memory.location || null);
+    setEditImageryType(memory.imageType || 'photo');
+    setEditImage(null);
+    setEditImagePreview(memory.imageData || null);
     setIsEditing(false);
   };
 
@@ -111,14 +146,55 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
             placeholder="Memory title..."
           />
 
-          {memory.imageData && (
-            <img
-              src={memory.imageData}
-              alt={editTitle}
-              className="w-full h-40 object-cover rounded-lg shadow-md"
-              style={{ filter: 'sepia(10%) saturate(90%)' }}
-            />
-          )}
+          <div>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <button
+                type="button"
+                onClick={() => setEditImageryType('photo')}
+                className="rounded-lg py-2 text-center text-sm font-medium transition-all duration-300"
+                style={{
+                  border: `2px solid ${editImageryType === 'photo' ? 'var(--dusty-rose)' : 'var(--soft-beige)'}`,
+                  background: editImageryType === 'photo' ? 'var(--warm-cream)' : 'transparent',
+                  color: 'var(--deep-brown)',
+                }}
+              >
+                📷 Photo
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditImageryType('streetview')}
+                className="rounded-lg py-2 text-center text-sm font-medium transition-all duration-300"
+                style={{
+                  border: `2px solid ${editImageryType === 'streetview' ? 'var(--dusty-rose)' : 'var(--soft-beige)'}`,
+                  background: editImageryType === 'streetview' ? 'var(--warm-cream)' : 'transparent',
+                  color: 'var(--deep-brown)',
+                }}
+              >
+                🧭 Street View
+              </button>
+            </div>
+
+            {editImageryType === 'photo' ? (
+              <>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleEditImageChange}
+                  className="vintage-input w-full text-sm"
+                />
+                {editImagePreview && (
+                  <img
+                    src={editImagePreview}
+                    alt={editTitle}
+                    className="w-full h-40 object-cover rounded-lg shadow-md mt-2"
+                    style={{ filter: 'sepia(10%) saturate(90%)' }}
+                  />
+                )}
+              </>
+            ) : (
+              <StreetView lat={editLocation?.lat} lng={editLocation?.lng} height="10rem" />
+            )}
+          </div>
 
           <textarea
             value={editStory}
@@ -169,7 +245,9 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
             {memory.title || 'Untitled memory'}
           </h2>
 
-          {memory.imageData && (
+          {memory.imageType === 'streetview' ? (
+            <StreetView lat={memory.location?.lat} lng={memory.location?.lng} height="10rem" />
+          ) : memory.imageData && (
             <img
               src={memory.imageData}
               alt={memory.title}

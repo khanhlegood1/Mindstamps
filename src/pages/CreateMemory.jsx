@@ -4,6 +4,7 @@ import { collection, addDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import LocationPicker from '../components/Map/LocationPicker';
 import VoiceRecorder from '../components/VoiceRecorder';
+import StreetView from '../components/StreetView';
 
 const CreateMemory = ({ onBack = null, onSuccess = null }) => {
   const [user] = useAuthState(auth);
@@ -12,6 +13,7 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
   const [location, setLocation] = useState({ lat: '', lng: '', name: '' });
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [imageryType, setImageryType] = useState('photo'); // 'photo' | 'streetview'
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [createdMemoryTitle, setCreatedMemoryTitle] = useState('');
@@ -202,9 +204,12 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
     try {
       console.log('Starting Firebase operations...');
       
-      // Convert image to base64 for storage in Firestore (temporary solution)
+      // Convert image to base64 for storage in Firestore (temporary solution).
+      // When the "Street View" imagery option is chosen, we don't store a
+      // photo at all — the memory's own location is enough to render the
+      // Street View panorama later.
       let imageData = null;
-      if (image) {
+      if (imageryType === 'photo' && image) {
         const reader = new FileReader();
         imageData = await new Promise((resolve) => {
           reader.onload = (e) => resolve(e.target.result);
@@ -219,6 +224,7 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
         story: story.trim(),
         location,
         imageData, // Store base64 image data directly (not recommended for production)
+        imageType: imageryType, // 'photo' | 'streetview'
         userId: user.uid,
         createdAt: new Date(),
       });
@@ -241,6 +247,7 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
     setLocation({ lat: '', lng: '', name: '' });
     setImage(null);
     setImagePreview(null);
+    setImageryType('photo');
   };
 
   const goToPlay = () => {
@@ -449,17 +456,52 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
               </div>
             )}
 
-            {/* Image Upload */}
+            {/* Imagery: a photo you took, or a live Street View of the location */}
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--deep-brown)' }}>
-                Got a photo? (totally optional)
+                Imagery (totally optional)
               </label>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="vintage-input w-full"
-              />
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setImageryType('photo')}
+                  className="rounded-xl p-3 text-center transition-all duration-300"
+                  style={{
+                    border: `2px solid ${imageryType === 'photo' ? 'var(--dusty-rose)' : 'var(--soft-beige)'}`,
+                    background: imageryType === 'photo' ? 'var(--warm-cream)' : 'transparent',
+                    color: 'var(--deep-brown)',
+                  }}
+                >
+                  <div className="text-xl mb-1">📷</div>
+                  <div className="text-sm font-medium">Photo</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageryType('streetview')}
+                  className="rounded-xl p-3 text-center transition-all duration-300"
+                  style={{
+                    border: `2px solid ${imageryType === 'streetview' ? 'var(--dusty-rose)' : 'var(--soft-beige)'}`,
+                    background: imageryType === 'streetview' ? 'var(--warm-cream)' : 'transparent',
+                    color: 'var(--deep-brown)',
+                  }}
+                >
+                  <div className="text-xl mb-1">🧭</div>
+                  <div className="text-sm font-medium">Street View</div>
+                </button>
+              </div>
+
+              {imageryType === 'photo' ? (
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="vintage-input w-full"
+                />
+              ) : (
+                <p className="text-sm" style={{ color: 'var(--warm-brown)' }}>
+                  We'll show a live Street View of wherever you pin on the map.
+                </p>
+              )}
             </div>
 
             {/* Submit Button */}
@@ -475,8 +517,8 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
 
         {/* Right Side - Map and Preview */}
         <div className="flex flex-col pb-8" style={{ background: 'linear-gradient(135deg, var(--soft-beige) 0%, var(--warm-cream) 100%)' }}>
-          {/* Image Preview */}
-          {imagePreview && (
+          {/* Imagery Preview */}
+          {imageryType === 'photo' && imagePreview && (
             <div className="p-4 md:p-6 border-b border-opacity-20" style={{ borderColor: 'var(--warm-brown)' }}>
               <h3 className="text-lg font-journal font-semibold mb-3" style={{ color: 'var(--deep-brown)' }}>
                 Your photo
@@ -488,6 +530,17 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
                   className="w-full h-32 object-cover"
                   style={{ filter: 'sepia(10%) saturate(90%)' }}
                 />
+              </div>
+            </div>
+          )}
+
+          {imageryType === 'streetview' && (
+            <div className="p-4 md:p-6 border-b border-opacity-20" style={{ borderColor: 'var(--warm-brown)' }}>
+              <h3 className="text-lg font-journal font-semibold mb-3" style={{ color: 'var(--deep-brown)' }}>
+                Street View preview
+              </h3>
+              <div className="paper-texture cozy-shadow rounded-lg overflow-hidden">
+                <StreetView lat={location.lat || null} lng={location.lng || null} height="8rem" />
               </div>
             </div>
           )}

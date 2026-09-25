@@ -42,6 +42,7 @@ const AllLocationsList = ({ onSelect, selectedId }) => {
               title: data.title || null,
               story: data.story || '',
               imageData: data.imageData || null,
+              imageType: data.imageType || null,
               createdAt: data.createdAt || null,
               userId: data.userId || null,
             };

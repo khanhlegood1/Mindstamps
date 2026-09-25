@@ -6,12 +6,16 @@ import CreateMemory from './CreateMemory';
 import { replaceSampleMemories } from '../utils/sampleData';
 import MobileNavigation from '../components/MobileNavigation';
 import MemoryLocationMap from '../components/MemoryLocationMap';
+import StreetView from '../components/StreetView';
 import useSwipeGesture from '../hooks/useSwipeGesture';
 
 const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditing = false }) => {
   const [editTitle, setEditTitle] = useState(memory.title);
   const [editStory, setEditStory] = useState(memory.story);
   const [editLocation, setEditLocation] = useState(memory.location || null);
+  const [editImageryType, setEditImageryType] = useState(memory.imageType || 'photo');
+  const [editImage, setEditImage] = useState(null);
+  const [editImagePreview, setEditImagePreview] = useState(memory.imageData || null);
   const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -20,7 +24,20 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
     setEditTitle(memory.title);
     setEditStory(memory.story);
     setEditLocation(memory.location || null);
-  }, [memory.id, memory.title, memory.story, memory.location]);
+    setEditImageryType(memory.imageType || 'photo');
+    setEditImage(null);
+    setEditImagePreview(memory.imageData || null);
+  }, [memory.id, memory.title, memory.story, memory.location, memory.imageType, memory.imageData]);
+
+  const handleEditImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setEditImage(file);
+      const reader = new FileReader();
+      reader.onload = (ev) => setEditImagePreview(ev.target.result);
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Log when MemorySpread receives isEditing prop changes
   useEffect(() => {
@@ -51,10 +68,25 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
 
     setSaving(true);
     try {
+      // Street View mode never stores a photo; photo mode keeps the existing
+      // image unless a new one was picked.
+      let imageData = memory.imageData || null;
+      if (editImageryType === 'streetview') {
+        imageData = null;
+      } else if (editImage) {
+        const reader = new FileReader();
+        imageData = await new Promise((resolve) => {
+          reader.onload = (ev) => resolve(ev.target.result);
+          reader.readAsDataURL(editImage);
+        });
+      }
+
       await onSave(memory.id, {
         title: editTitle.trim(),
         story: editStory.trim(),
-        location: editLocation
+        location: editLocation,
+        imageType: editImageryType,
+        imageData,
       });
     } catch (error) {
       console.error('Error saving memory:', error);
@@ -68,6 +100,9 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
     setEditTitle(memory.title);
     setEditStory(memory.story);
     setEditLocation(memory.location || null);
+    setEditImageryType(memory.imageType || 'photo');
+    setEditImage(null);
+    setEditImagePreview(memory.imageData || null);
     setShowDeleteConfirm(false);
     onCancelEdit();
   };
@@ -132,19 +167,61 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
               placeholder="Memory title..."
             />
 
-            {memory.imageData && (
-              <div className="relative flex-shrink-0">
-                <img
-                  src={memory.imageData}
-                  alt={memory.title}
-                  className="w-full h-32 object-cover rounded-lg shadow-md"
-                  style={{ filter: 'sepia(10%) saturate(90%)' }}
-                />
-                <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center">
-                  <div className="w-2 h-2 rounded-full" style={{ background: 'var(--dusty-rose)' }}></div>
-                </div>
+            {/* Imagery: photo or Street View */}
+            <div className="flex-shrink-0">
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => setEditImageryType('photo')}
+                  className="rounded-lg py-2 text-center text-sm font-medium transition-all duration-300"
+                  style={{
+                    border: `2px solid ${editImageryType === 'photo' ? 'var(--dusty-rose)' : 'var(--soft-beige)'}`,
+                    background: editImageryType === 'photo' ? 'var(--warm-cream)' : 'transparent',
+                    color: 'var(--deep-brown)',
+                  }}
+                >
+                  📷 Photo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditImageryType('streetview')}
+                  className="rounded-lg py-2 text-center text-sm font-medium transition-all duration-300"
+                  style={{
+                    border: `2px solid ${editImageryType === 'streetview' ? 'var(--dusty-rose)' : 'var(--soft-beige)'}`,
+                    background: editImageryType === 'streetview' ? 'var(--warm-cream)' : 'transparent',
+                    color: 'var(--deep-brown)',
+                  }}
+                >
+                  🧭 Street View
+                </button>
               </div>
-            )}
+
+              {editImageryType === 'photo' ? (
+                <>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleEditImageChange}
+                    className="vintage-input w-full text-sm"
+                  />
+                  {editImagePreview && (
+                    <div className="relative mt-2">
+                      <img
+                        src={editImagePreview}
+                        alt={editTitle}
+                        className="w-full h-32 object-cover rounded-lg shadow-md"
+                        style={{ filter: 'sepia(10%) saturate(90%)' }}
+                      />
+                      <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center">
+                        <div className="w-2 h-2 rounded-full" style={{ background: 'var(--dusty-rose)' }}></div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <StreetView lat={editLocation?.lat} lng={editLocation?.lng} height="8rem" />
+              )}
+            </div>
 
             {/* Story textarea - takes remaining space */}
             <textarea
@@ -261,7 +338,9 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
             {memory.title}
           </h3>
 
-          {memory.imageData && (
+          {memory.imageType === 'streetview' ? (
+            <StreetView lat={memory.location?.lat} lng={memory.location?.lng} height="12rem" />
+          ) : memory.imageData && (
             <div className="relative">
               <img
                 src={memory.imageData}
