@@ -1,6 +1,7 @@
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { auth } from '../config/firebase';
 import Login from '../components/Auth/Login';
+import AllLocationsList from '../components/AllLocationsList';
 
 const Home = () => {
   const [user, loading] = useAuthState(auth);
@@ -50,6 +51,8 @@ const Home = () => {
               Open it up
             </a>
           </div>
+
+          <AllLocationsList />
         </div>
       </div>
 
