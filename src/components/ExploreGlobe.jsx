@@ -200,6 +200,11 @@ const ExploreGlobe = () => {
         addSourceAndLayers(features);
         setStatus('ready');
       } catch (err) {
+        // Signed-out visitors see this globe on the login screen, so if
+        // Firestore Security Rules don't allow public read on `memories`,
+        // every load here will fail with permission-denied. Add a rule like:
+        //   match /memories/{id} { allow read: if true; }
+        // (or scope it to a public/isPublic flag on the memory doc).
         console.error('Error loading memories for globe:', err);
         if (isMounted) setStatus('error');
       }
@@ -243,6 +248,14 @@ const ExploreGlobe = () => {
           style={{ color: 'rgba(255,255,255,0.55)' }}
         >
           No memories saved yet — be the first!
+        </div>
+      )}
+      {status === 'error' && (
+        <div
+          className="absolute inset-x-0 bottom-3 text-center text-xs px-4"
+          style={{ color: 'rgba(255,255,255,0.55)' }}
+        >
+          The memory map couldn't load right now.
         </div>
       )}
     </div>
