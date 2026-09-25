@@ -47,7 +47,7 @@ const ExploreGlobe = () => {
     });
     mapRef.current = map;
 
-    map.scrollZoom.disable();
+    map.scrollZoom.enable();
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
 
     map.on('style.load', () => {
