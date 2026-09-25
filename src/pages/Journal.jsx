@@ -8,7 +8,7 @@ import MobileNavigation from '../components/MobileNavigation';
 import MemoryLocationMap from '../components/MemoryLocationMap';
 import useSwipeGesture from '../hooks/useSwipeGesture';
 
-const MemoryPage = ({ memory, isLeft = true, onEdit, onSave, onCancelEdit, onDelete, isEditing = false }) => {
+const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditing = false }) => {
   const [editTitle, setEditTitle] = useState(memory.title);
   const [editStory, setEditStory] = useState(memory.story);
   const [editLocation, setEditLocation] = useState(memory.location || null);
@@ -22,16 +22,15 @@ const MemoryPage = ({ memory, isLeft = true, onEdit, onSave, onCancelEdit, onDel
     setEditLocation(memory.location || null);
   }, [memory.id, memory.title, memory.story, memory.location]);
 
-  // Log when MemoryPage receives isEditing prop changes
+  // Log when MemorySpread receives isEditing prop changes
   useEffect(() => {
     if (isEditing) {
-      console.log('MemoryPage: Entering edit mode for memory:', {
+      console.log('MemorySpread: Entering edit mode for memory:', {
         id: memory.id,
-        title: memory.title,
-        isLeft: isLeft
+        title: memory.title
       });
     }
-  }, [isEditing, memory.id, memory.title, isLeft]);
+  }, [isEditing, memory.id, memory.title]);
 
   const formatDate = (timestamp) => {
     if (!timestamp) return 'A moment in time';
@@ -93,171 +92,52 @@ const MemoryPage = ({ memory, isLeft = true, onEdit, onSave, onCancelEdit, onDel
 
   if (isEditing) {
     return (
-      <div className={`journal-page paper-texture min-h-full p-5 md:p-8 flex flex-col ${isLeft ? 'border-r border-opacity-20' : ''} relative`} 
-           style={{ 
-             borderColor: 'var(--warm-brown)',
-             boxShadow: '0 0 0 3px rgba(255, 165, 0, 0.3), 0 0 20px rgba(255, 165, 0, 0.2)',
-             background: 'linear-gradient(135deg, rgba(255, 248, 220, 0.8), rgba(255, 245, 238, 0.9))'
-           }}>
-        {/* Visual editing indicator */}
-        <div className="absolute top-1 left-1 right-1 bottom-1 border-2 border-dashed rounded-lg pointer-events-none animate-pulse"
-             style={{ borderColor: 'var(--dusty-rose)' }} />
-        
-        {/* Page header with date */}
-        <div className="mb-6 pb-4 border-b border-opacity-20 flex-shrink-0 flex items-center justify-between" style={{ borderColor: 'var(--warm-brown)' }}>
-          <div className="text-sm font-journal italic" style={{ color: 'var(--warm-brown)' }}>
-            {formatDate(memory.createdAt)} • Editing
-          </div>
-          <div className="flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium"
-               style={{ 
-                 background: 'var(--dusty-rose)', 
-                 color: 'white',
-                 boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-               }}>
-            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-            <span>EDITING</span>
-          </div>
-        </div>
+      <>
+        {/* LEFT physical page - content (editable) */}
+        <div className="journal-page paper-texture min-h-full p-5 md:p-8 flex flex-col border-r border-opacity-20 relative"
+             style={{
+               borderColor: 'var(--warm-brown)',
+               boxShadow: '0 0 0 3px rgba(255, 165, 0, 0.3), 0 0 20px rgba(255, 165, 0, 0.2)',
+               background: 'linear-gradient(135deg, rgba(255, 248, 220, 0.8), rgba(255, 245, 238, 0.9))'
+             }}>
+          {/* Visual editing indicator */}
+          <div className="absolute top-1 left-1 right-1 bottom-1 border-2 border-dashed rounded-lg pointer-events-none animate-pulse"
+               style={{ borderColor: 'var(--dusty-rose)' }} />
 
-        {/* Edit form - constrained to available height */}
-        <div className="flex flex-col flex-1 min-h-0 space-y-4">
-          {/* Title input */}
-          <input
-            type="text"
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            className="text-2xl font-journal font-semibold leading-tight bg-transparent border-none outline-none w-full flex-shrink-0"
-            style={{ color: 'var(--deep-brown)' }}
-            placeholder="Memory title..."
-          />
-
-          <div className="flex flex-col md:flex-row gap-4 flex-1 min-h-0">
-            {/* Left: image + story */}
-            <div className="flex flex-col flex-1 min-h-0 space-y-4">
-              {memory.imageData && (
-                <div className="relative flex-shrink-0">
-                  <img
-                    src={memory.imageData}
-                    alt={memory.title}
-                    className="w-full h-32 object-cover rounded-lg shadow-md"
-                    style={{ filter: 'sepia(10%) saturate(90%)' }}
-                  />
-                  <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center">
-                    <div className="w-2 h-2 rounded-full" style={{ background: 'var(--dusty-rose)' }}></div>
-                  </div>
-                </div>
-              )}
-
-              {/* Story textarea - takes remaining space */}
-              <textarea
-                value={editStory}
-                onChange={(e) => setEditStory(e.target.value)}
-                className="flex-1 font-journal leading-relaxed text-base bg-transparent border-none outline-none resize-none w-full min-h-[10rem]"
-                style={{ color: 'var(--ink-black)' }}
-                placeholder="Tell your story..."
-              />
+          {/* Page header with date */}
+          <div className="mb-6 pb-4 border-b border-opacity-20 flex-shrink-0 flex items-center justify-between" style={{ borderColor: 'var(--warm-brown)' }}>
+            <div className="text-sm font-journal italic" style={{ color: 'var(--warm-brown)' }}>
+              {formatDate(memory.createdAt)} • Editing
             </div>
-
-            {/* Right: editable location map */}
-            <div className="w-full md:w-56 lg:w-64 flex-shrink-0 space-y-2">
-              <MemoryLocationMap
-                location={editLocation}
-                editable
-                onLocationChange={setEditLocation}
-              />
-              <div className="text-xs font-medium" style={{ color: 'var(--warm-brown)' }}>
-                {editLocation?.name || 'No location set'}
-              </div>
+            <div className="flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium"
+                 style={{
+                   background: 'var(--dusty-rose)',
+                   color: 'white',
+                   boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                 }}>
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+              <span>EDITING</span>
             </div>
           </div>
 
-          {/* Edit buttons - fixed within page content area */}
-          <div className="flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-opacity-20 flex-shrink-0" style={{ borderColor: 'var(--warm-brown)' }}>
-            <div className="flex space-x-3">
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="btn-warm px-4 py-2 rounded-full font-medium text-sm disabled:opacity-50"
-              >
-                {saving ? 'Saving...' : 'Save changes'}
-              </button>
-              <button
-                onClick={handleCancel}
-                className="px-4 py-2 rounded-full font-medium text-sm transition-all duration-300"
-                style={{ 
-                  background: 'var(--paper-white)',
-                  color: 'var(--warm-brown)',
-                  border: '2px solid var(--soft-beige)'
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-            
-            {/* Delete button */}
-            <button
-              onClick={handleDelete}
-              disabled={saving}
-              className={`px-4 py-2 rounded-full font-medium text-sm transition-all duration-300 disabled:opacity-50 ${
-                showDeleteConfirm 
-                  ? 'bg-red-500 text-white hover:bg-red-600' 
-                  : 'text-red-500 hover:bg-red-50 border border-red-200'
-              }`}
-            >
-              {showDeleteConfirm ? 'Click again to delete' : '🗑️ Delete'}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+          {/* Edit form - constrained to available height */}
+          <div className="flex flex-col flex-1 min-h-0 space-y-4">
+            {/* Title input */}
+            <input
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="text-2xl font-journal font-semibold leading-tight bg-transparent border-none outline-none w-full flex-shrink-0"
+              style={{ color: 'var(--deep-brown)' }}
+              placeholder="Memory title..."
+            />
 
-  return (
-    <div className={`journal-page paper-texture min-h-full p-5 md:p-8 relative ${isLeft ? 'border-r border-opacity-20' : ''} group hover:shadow-lg transition-all duration-300`} 
-         style={{ borderColor: 'var(--warm-brown)' }}>
-      {/* Edit button */}
-      <button
-        onClick={() => {
-          console.log('Edit button clicked for memory:', {
-            id: memory.id,
-            title: memory.title,
-            isLeft: isLeft
-          });
-          onEdit(memory.id);
-        }}
-        className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-medium transition-all duration-300 opacity-60 hover:opacity-100 group-hover:opacity-90 hover:scale-105"
-        style={{ 
-          background: 'var(--soft-beige)',
-          color: 'var(--warm-brown)',
-          border: '1px solid var(--warm-brown)',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-        }}
-      >
-        ✏️ Edit
-      </button>
-
-      {/* Page header with date */}
-      <div className="mb-6 pb-4 pr-20 border-b border-opacity-20" style={{ borderColor: 'var(--warm-brown)' }}>
-        <div className="text-sm font-journal italic" style={{ color: 'var(--warm-brown)' }}>
-          {formatDate(memory.createdAt)}
-        </div>
-      </div>
-
-      {/* Memory content */}
-      <div className="space-y-6">
-        <h3 className="text-2xl font-journal font-semibold leading-tight" style={{ color: 'var(--deep-brown)' }}>
-          {memory.title}
-        </h3>
-
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Left: image + story */}
-          <div className="flex-1 space-y-6 min-w-0">
             {memory.imageData && (
-              <div className="relative">
+              <div className="relative flex-shrink-0">
                 <img
                   src={memory.imageData}
                   alt={memory.title}
-                  className="w-full h-48 object-cover rounded-lg shadow-md"
+                  className="w-full h-32 object-cover rounded-lg shadow-md"
                   style={{ filter: 'sepia(10%) saturate(90%)' }}
                 />
                 <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center">
@@ -266,25 +146,163 @@ const MemoryPage = ({ memory, isLeft = true, onEdit, onSave, onCancelEdit, onDel
               </div>
             )}
 
-            <div className="prose prose-sm">
-              <p className="font-journal leading-relaxed text-base" style={{ color: 'var(--ink-black)' }}>
-                {memory.story}
-              </p>
-            </div>
-          </div>
+            {/* Story textarea - takes remaining space */}
+            <textarea
+              value={editStory}
+              onChange={(e) => setEditStory(e.target.value)}
+              className="flex-1 font-journal leading-relaxed text-base bg-transparent border-none outline-none resize-none w-full min-h-[10rem]"
+              style={{ color: 'var(--ink-black)' }}
+              placeholder="Tell your story..."
+            />
 
-          {/* Right: location map */}
-          <div className="w-full md:w-56 lg:w-64 flex-shrink-0 space-y-2">
-            <MemoryLocationMap location={memory.location} editable={false} />
-            <div className="text-sm font-medium" style={{ color: 'var(--warm-brown)' }}>
-              {memory.location?.name || 'Somewhere special'}
+            {/* Edit buttons - fixed within page content area */}
+            <div className="flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-opacity-20 flex-shrink-0" style={{ borderColor: 'var(--warm-brown)' }}>
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="btn-warm px-4 py-2 rounded-full font-medium text-sm disabled:opacity-50"
+                >
+                  {saving ? 'Saving...' : 'Save changes'}
+                </button>
+                <button
+                  onClick={handleCancel}
+                  className="px-4 py-2 rounded-full font-medium text-sm transition-all duration-300"
+                  style={{
+                    background: 'var(--paper-white)',
+                    color: 'var(--warm-brown)',
+                    border: '2px solid var(--soft-beige)'
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+
+              {/* Delete button */}
+              <button
+                onClick={handleDelete}
+                disabled={saving}
+                className={`px-4 py-2 rounded-full font-medium text-sm transition-all duration-300 disabled:opacity-50 ${
+                  showDeleteConfirm
+                    ? 'bg-red-500 text-white hover:bg-red-600'
+                    : 'text-red-500 hover:bg-red-50 border border-red-200'
+                }`}
+              >
+                {showDeleteConfirm ? 'Click again to delete' : '🗑️ Delete'}
+              </button>
             </div>
           </div>
         </div>
+
+        {/* RIGHT physical page - map (editable), always on the right */}
+        <div className="journal-page paper-texture min-h-full p-5 md:p-8 flex flex-col relative"
+             style={{
+               boxShadow: '0 0 0 3px rgba(255, 165, 0, 0.3), 0 0 20px rgba(255, 165, 0, 0.2)',
+               background: 'linear-gradient(135deg, rgba(255, 248, 220, 0.8), rgba(255, 245, 238, 0.9))'
+             }}>
+          <div className="absolute top-1 left-1 right-1 bottom-1 border-2 border-dashed rounded-lg pointer-events-none animate-pulse"
+               style={{ borderColor: 'var(--dusty-rose)' }} />
+          <div className="mb-4 text-sm font-medium flex-shrink-0" style={{ color: 'var(--warm-brown)' }}>
+            Pin this memory's location
+          </div>
+          <div className="flex-1 min-h-0 flex flex-col space-y-2">
+            <div className="flex-1 min-h-0">
+              <MemoryLocationMap
+                location={editLocation}
+                editable
+                onLocationChange={setEditLocation}
+                height="100%"
+              />
+            </div>
+            <div className="text-xs font-medium flex-shrink-0" style={{ color: 'var(--warm-brown)' }}>
+              {editLocation?.name || 'No location set'}
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {/* LEFT physical page - content */}
+      <div className="journal-page paper-texture min-h-full p-5 md:p-8 border-r border-opacity-20 relative group hover:shadow-lg transition-all duration-300"
+           style={{ borderColor: 'var(--warm-brown)' }}>
+        {/* Edit button */}
+        <button
+          onClick={() => {
+            console.log('Edit button clicked for memory:', {
+              id: memory.id,
+              title: memory.title
+            });
+            onEdit(memory.id);
+          }}
+          className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-medium transition-all duration-300 opacity-60 hover:opacity-100 group-hover:opacity-90 hover:scale-105"
+          style={{
+            background: 'var(--soft-beige)',
+            color: 'var(--warm-brown)',
+            border: '1px solid var(--warm-brown)',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          }}
+        >
+          ✏️ Edit
+        </button>
+
+        {/* Page header with date */}
+        <div className="mb-6 pb-4 pr-20 border-b border-opacity-20" style={{ borderColor: 'var(--warm-brown)' }}>
+          <div className="text-sm font-journal italic" style={{ color: 'var(--warm-brown)' }}>
+            {formatDate(memory.createdAt)}
+          </div>
+        </div>
+
+        {/* Memory content */}
+        <div className="space-y-6">
+          <h3 className="text-2xl font-journal font-semibold leading-tight" style={{ color: 'var(--deep-brown)' }}>
+            {memory.title}
+          </h3>
+
+          {memory.imageData && (
+            <div className="relative">
+              <img
+                src={memory.imageData}
+                alt={memory.title}
+                className="w-full h-48 object-cover rounded-lg shadow-md"
+                style={{ filter: 'sepia(10%) saturate(90%)' }}
+              />
+              <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-white rounded-full shadow-md flex items-center justify-center">
+                <div className="w-2 h-2 rounded-full" style={{ background: 'var(--dusty-rose)' }}></div>
+              </div>
+            </div>
+          )}
+
+          <div className="prose prose-sm">
+            <p className="font-journal leading-relaxed text-base" style={{ color: 'var(--ink-black)' }}>
+              {memory.story}
+            </p>
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* RIGHT physical page - map, always on the right regardless of which memory/side this is */}
+      <div className="journal-page paper-texture min-h-full p-5 md:p-8 relative flex flex-col">
+        <div className="mb-6 pb-4 border-b border-opacity-20 flex-shrink-0" style={{ borderColor: 'var(--warm-brown)' }}>
+          <div className="text-sm font-journal italic" style={{ color: 'var(--warm-brown)' }}>
+            Where it happened
+          </div>
+        </div>
+        <div className="flex-1 min-h-0 flex flex-col space-y-2">
+          <div className="flex-1 min-h-0">
+            <MemoryLocationMap location={memory.location} editable={false} height="100%" />
+          </div>
+          <div className="text-sm font-medium flex-shrink-0" style={{ color: 'var(--warm-brown)' }}>
+            {memory.location?.name || 'Somewhere special'}
+          </div>
+        </div>
+      </div>
+    </>
   );
 };
+
 
 // Navigation Footer Component
 const NavigationFooter = ({ currentPage, totalPages, onPrevPage, onNextPage, onPageSelect, showKeyboardHint = true }) => (
@@ -381,7 +399,7 @@ const Journal = () => {
       if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
         setCurrentPage(prev => prev > 0 ? prev - 1 : prev);
       } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
-        const totalPages = Math.ceil(memories.length / 2);
+        const totalPages = memories.length;
         setCurrentPage(prev => prev < totalPages - 1 ? prev + 1 : prev);
       }
     };
@@ -401,18 +419,14 @@ const Journal = () => {
   // Additional safety check: Clear edit state if the memory being edited is no longer on current page
   useEffect(() => {
     if (editingMemoryId && memories.length > 0) {
-      const leftMemory = memories[currentPage * 2];
-      const rightMemory = memories[currentPage * 2 + 1];
-      const isEditingMemoryOnCurrentPage = 
-        (leftMemory && leftMemory.id === editingMemoryId) ||
-        (rightMemory && rightMemory.id === editingMemoryId);
+      const currentMemory = memories[currentPage];
+      const isEditingMemoryOnCurrentPage = currentMemory && currentMemory.id === editingMemoryId;
       
       if (!isEditingMemoryOnCurrentPage) {
         console.log('Editing memory not found on current page, clearing edit state:', {
           editingMemoryId,
           currentPage,
-          leftMemoryId: leftMemory?.id,
-          rightMemoryId: rightMemory?.id
+          currentMemoryId: currentMemory?.id
         });
         setEditingMemoryId(null);
       }
@@ -441,7 +455,7 @@ const Journal = () => {
   };
 
   const nextPage = () => {
-    if (currentPage < Math.ceil(memories.length / 2) - 1) {
+    if (currentPage < memories.length - 1) {
       setCurrentPage(currentPage + 1);
     }
   };
@@ -456,18 +470,13 @@ const Journal = () => {
     // Console logging to track which memory ID is being edited
     console.log('handleEditMemory called with memoryId:', memoryId);
     
-    // Calculate current page memories for validation
-    const currentLeftMemory = memories[currentPage * 2];
-    const currentRightMemory = memories[currentPage * 2 + 1];
+    // Calculate current page memory for validation
+    const currentPageMemory = memories[currentPage];
     
-    console.log('Current memories on page:', {
-      leftMemory: currentLeftMemory?.id || 'none',
-      rightMemory: currentRightMemory?.id || 'none',
+    console.log('Current memory on page:', {
+      memory: currentPageMemory?.id || 'none',
       currentPage: currentPage,
-      memoryTitles: {
-        left: currentLeftMemory?.title || 'none',
-        right: currentRightMemory?.title || 'none'
-      }
+      memoryTitle: currentPageMemory?.title || 'none'
     });
     
     // Validation to ensure the correct memory is being edited
@@ -489,16 +498,13 @@ const Journal = () => {
     });
     
     // Additional validation to ensure the memory is on the current page
-    const isOnCurrentPage = (currentLeftMemory && currentLeftMemory.id === memoryId) || 
-                           (currentRightMemory && currentRightMemory.id === memoryId);
+    const isOnCurrentPage = currentPageMemory && currentPageMemory.id === memoryId;
     
     if (!isOnCurrentPage) {
       console.error('handleEditMemory: CRITICAL - Memory', memoryId, 'is not on current page. Refusing to edit to prevent wrong memory editing.');
-      console.log('Expected memories on current page:', {
-        left: currentLeftMemory?.id,
-        right: currentRightMemory?.id,
-        leftTitle: currentLeftMemory?.title,
-        rightTitle: currentRightMemory?.title
+      console.log('Expected memory on current page:', {
+        id: currentPageMemory?.id,
+        title: currentPageMemory?.title
       });
       console.log('Attempted to edit memory:', {
         id: memoryExists.id,
@@ -594,9 +600,8 @@ const Journal = () => {
       // Clear edit state after successful deletion
       setEditingMemoryId(null);
       
-      // Adjust current page if necessary (if we deleted the last memory on the last page)
-      const newMemoriesCount = memories.length - 1;
-      const newTotalPages = Math.ceil(newMemoriesCount / 2);
+      // Adjust current page if necessary (if we deleted the memory on the last page)
+      const newTotalPages = memories.length - 1;
       if (currentPage >= newTotalPages && newTotalPages > 0) {
         setCurrentPage(newTotalPages - 1);
       }
@@ -738,9 +743,8 @@ const Journal = () => {
     );
   }
 
-  const leftMemory = memories[currentPage * 2];
-  const rightMemory = memories[currentPage * 2 + 1];
-  const totalPages = Math.ceil(memories.length / 2);
+  const currentMemory = memories[currentPage];
+  const totalPages = memories.length;
 
   return (
     <div className="h-full flex flex-col">
@@ -765,74 +769,34 @@ const Journal = () => {
         </div>
       </div>
 
-      {/* Journal Pages */}
+      {/* Journal Pages - left physical page = content, right physical page = map, always */}
       <div 
         className={`side-by-side spiral-holes flex-1 ${editingMemoryId ? 'editing-mode' : ''}`}
         {...swipeHandlers}
       >
-        {/* Left Page */}
-        <div className="relative">
-          {leftMemory ? (
-            <MemoryPage 
-              memory={leftMemory} 
-              isLeft={true}
-              onEdit={handleEditMemory}
-              onSave={handleSaveMemory}
-              onCancelEdit={handleCancelEdit}
-              onDelete={handleDeleteMemory}
-              isEditing={(() => {
-                const isEditing = editingMemoryId === leftMemory.id;
-                if (editingMemoryId) {
-                  console.log('Left memory isEditing calculation:', {
-                    editingMemoryId,
-                    leftMemoryId: leftMemory.id,
-                    leftMemoryTitle: leftMemory.title,
-                    isEditing
-                  });
-                }
-                return isEditing;
-              })()}
-            />
-          ) : (
+        {currentMemory ? (
+          <MemorySpread 
+            memory={currentMemory} 
+            onEdit={handleEditMemory}
+            onSave={handleSaveMemory}
+            onCancelEdit={handleCancelEdit}
+            onDelete={handleDeleteMemory}
+            isEditing={editingMemoryId === currentMemory.id}
+          />
+        ) : (
+          <>
             <div className="paper-texture h-full p-8 border-r border-opacity-20 flex items-center justify-center" style={{ borderColor: 'var(--warm-brown)' }}>
               <div className="text-center opacity-30">
                 <p className="font-journal" style={{ color: 'var(--warm-brown)' }}>Empty page</p>
               </div>
             </div>
-          )}
-        </div>
-
-        {/* Right Page (empty placeholder only makes sense in the two-page spread) */}
-        <div className={`relative ${rightMemory ? '' : 'regular-only'}`}>
-          {rightMemory ? (
-            <MemoryPage 
-              memory={rightMemory} 
-              isLeft={false}
-              onEdit={handleEditMemory}
-              onSave={handleSaveMemory}
-              onCancelEdit={handleCancelEdit}
-              onDelete={handleDeleteMemory}
-              isEditing={(() => {
-                const isEditing = editingMemoryId === rightMemory.id;
-                if (editingMemoryId) {
-                  console.log('Right memory isEditing calculation:', {
-                    editingMemoryId,
-                    rightMemoryId: rightMemory.id,
-                    rightMemoryTitle: rightMemory.title,
-                    isEditing
-                  });
-                }
-                return isEditing;
-              })()}
-            />
-          ) : (
             <div className="paper-texture h-full p-8 flex items-center justify-center">
               <div className="text-center opacity-30">
                 <p className="font-journal" style={{ color: 'var(--warm-brown)' }}>Empty page</p>
               </div>
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
 
       {/* Navigation Footer - tablet / laptop */}
