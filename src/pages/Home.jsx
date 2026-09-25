@@ -27,7 +27,7 @@ const Home = () => {
   }
 
   return (
-    <div className="side-by-side h-full">
+    <div className="side-by-side home-layout h-full">
       {/* Left Side - Welcome & Places everyone has saved */}
       <div className="flex flex-col justify-center items-center p-6 md:p-12 relative overflow-hidden">
         <div className="max-w-lg text-center z-10">

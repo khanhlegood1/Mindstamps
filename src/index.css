@@ -425,6 +425,27 @@ body {
   .btn-warm:active, .btn-sage:active {
     transform: scale(0.98);
   }
+}
+
+/* Home page only: also stack to a single column on iPad portrait widths
+   (768-1023px). At the default 768px breakpoint two 1fr columns are too
+   narrow for the welcome text + "places everyone has saved" list to read
+   comfortably, so Home keeps stacking until there's real laptop/iPad
+   landscape width (>=1024px) to spare. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .home-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+
+  .home-layout::before,
+  .home-layout::after {
+    display: none;
+  }
+
+  .home-layout > *:first-child::after {
+    display: none;
+  }
 }/* 
 Editing mode visual feedback */
 .editing-mode {

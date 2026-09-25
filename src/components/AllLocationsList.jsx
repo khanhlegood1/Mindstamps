@@ -94,7 +94,7 @@ const AllLocationsList = ({ onSelect, selectedId }) => {
           <p className="text-sm mb-3" style={{ color: 'var(--warm-brown)' }}>
             {locations.length} {locations.length === 1 ? 'place' : 'places'} saved across all users
           </p>
-          <ul className="space-y-3 max-h-72 overflow-y-auto pr-1">
+          <ul className="space-y-3 max-h-72 md:max-h-96 overflow-y-auto pr-1">
             {locations.map((loc) => {
               const isSelected = selectedId === loc.id;
               return (
