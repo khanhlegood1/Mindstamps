@@ -19,8 +19,18 @@ const Header = () => {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  const handleSignOut = () => {
-    signOut(auth);
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } finally {
+      // Always land back on the root/home view, even if the user was
+      // deep in #play or #journal when they hit "Sign Out".
+      if (window.location.hash) {
+        window.location.hash = '';
+      } else {
+        setCurrentPage('home');
+      }
+    }
   };
 
   const navItems = [

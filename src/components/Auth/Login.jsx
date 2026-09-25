@@ -7,6 +7,7 @@ import {
   GoogleAuthProvider,
 } from 'firebase/auth';
 import { auth } from '../../config/firebase';
+import ExploreGlobe from '../ExploreGlobe';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -75,37 +76,38 @@ const Login = () => {
   return (
     <div className="cozy-container">
       <div className="side-by-side h-full">
-        {/* Left Side - Welcome */}
-        <div className="flex flex-col justify-center items-center p-6 md:p-12 relative overflow-hidden">
-          {/* Decorative elements */}
-          <div className="absolute top-8 left-8 text-6xl opacity-20">🌸</div>
-          <div className="absolute bottom-8 right-8 text-4xl opacity-20">📚</div>
-          <div className="absolute top-1/3 right-12 text-3xl opacity-15">✨</div>
-
-          <div className="text-center z-10">
-            <div className="w-16 h-16 md:w-20 md:h-20 mx-auto mb-4 md:mb-6 rounded-full bg-gradient-to-br from-yellow-200 to-orange-300 flex items-center justify-center text-3xl">
-              ✨
-            </div>
-            <h1 className="text-3xl md:text-4xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
-              Welcome to Mindstamps
-            </h1>
-            <p className="hidden md:block text-lg leading-relaxed max-w-md" style={{ color: 'var(--warm-brown)' }}>
-              Your personal sanctuary for memories. A cozy space where every moment finds its home.
-            </p>
+        {/* Left Side - Explore: a dark globe of every memory saved, like phoneme.vercel.app/explore */}
+        <div className="flex flex-col p-6 md:p-12 relative overflow-hidden h-full">
+          <div className="flex-1 min-h-0 w-full">
+            <ExploreGlobe />
           </div>
         </div>
 
         {/* Right Side - Login Form */}
         <div className="flex flex-col justify-center items-center p-6 md:p-12" style={{ background: 'linear-gradient(135deg, var(--soft-beige) 0%, var(--warm-cream) 100%)' }}>
-          <div className="paper-texture cozy-shadow rounded-2xl p-6 md:p-8 w-full max-w-md">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl font-journal font-semibold" style={{ color: 'var(--deep-brown)' }}>
-                {showForgotPassword ? 'Reset Password' : isSignUp ? 'Create Your Space' : 'Welcome Back'}
-              </h2>
-              <p className="text-sm mt-2" style={{ color: 'var(--warm-brown)' }}>
-                {showForgotPassword ? 'Enter your email to reset your password' : isSignUp ? 'Begin your memory journey' : 'Enter your cozy corner'}
+          <div className="w-full max-w-md">
+            {/* Welcome block, moved here above the sign-in card */}
+            <div className="text-center mb-6 md:mb-8">
+              <div className="w-14 h-14 md:w-16 md:h-16 mx-auto mb-3 md:mb-4 rounded-full bg-gradient-to-br from-yellow-200 to-orange-300 flex items-center justify-center text-2xl md:text-3xl">
+                ✨
+              </div>
+              <h1 className="text-2xl md:text-3xl font-journal font-semibold mb-2" style={{ color: 'var(--deep-brown)' }}>
+                Welcome to Mindstamps
+              </h1>
+              <p className="text-sm md:text-base leading-relaxed" style={{ color: 'var(--warm-brown)' }}>
+                Your personal sanctuary for memories. A cozy space where every moment finds its home.
               </p>
             </div>
+
+            <div className="paper-texture cozy-shadow rounded-2xl p-6 md:p-8">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl font-journal font-semibold" style={{ color: 'var(--deep-brown)' }}>
+                  {showForgotPassword ? 'Reset Password' : isSignUp ? 'Create Your Space' : 'Welcome Back'}
+                </h2>
+                <p className="text-sm mt-2" style={{ color: 'var(--warm-brown)' }}>
+                  {showForgotPassword ? 'Enter your email to reset your password' : isSignUp ? 'Begin your memory journey' : 'Enter your cozy corner'}
+                </p>
+              </div>
 
             {showForgotPassword ? (
               <form className="space-y-6" onSubmit={handleForgotPassword}>
@@ -246,6 +248,7 @@ const Login = () => {
                 </div>
               </form>
             )}
+            </div>
           </div>
         </div>
       </div>
