@@ -5,6 +5,8 @@ import { auth, db } from '../config/firebase';
 import LocationPicker from '../components/Map/LocationPicker';
 import VoiceRecorder from '../components/VoiceRecorder';
 import StreetView from '../components/StreetView';
+import { classifyVideoUrl } from '../lib/videoLink';
+import { generateLearningPageSpec } from '../lib/videoLearning';
 
 const CreateMemory = ({ onBack = null, onSuccess = null }) => {
   const [user] = useAuthState(auth);
@@ -21,6 +23,10 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
   const [voiceTranscript, setVoiceTranscript] = useState('');
   const [currentVoiceField, setCurrentVoiceField] = useState('title');
   const [isTogglingVoice, setIsTogglingVoice] = useState(false);
+  const [videoUrl, setVideoUrl] = useState('');
+  const [learningSpec, setLearningSpec] = useState(null);
+  const [learningSpecLoading, setLearningSpecLoading] = useState(false);
+  const [learningSpecError, setLearningSpecError] = useState('');
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -168,6 +174,29 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
     }, 1000);
   };
 
+  // Nút "Tạo trang học tập từ video": nhận link YouTube, lấy transcript +
+  // Groq sinh JSON spec cho một trang học tập tương tác dựa trên nội dung
+  // video (xem src/lib/videoLearning.js + api/video-to-learning.js). Kết quả
+  // được lưu kèm memory (field videoLearningSpec) khi submit.
+  const handleGenerateLearningPage = async () => {
+    const classified = classifyVideoUrl(videoUrl);
+    if (!classified) {
+      setLearningSpecError('Vui lòng dán một link video YouTube hợp lệ (video/short có phụ đề).');
+      return;
+    }
+
+    setLearningSpecLoading(true);
+    setLearningSpecError('');
+    setLearningSpec(null);
+    try {
+      const result = await generateLearningPageSpec(classified.url);
+      setLearningSpec(result.spec);
+    } catch (err) {
+      setLearningSpecError(err.message || 'Không tạo được trang học tập từ video này.');
+    }
+    setLearningSpecLoading(false);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     
@@ -225,6 +254,8 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
         location,
         imageData, // Store base64 image data directly (not recommended for production)
         imageType: imageryType, // 'photo' | 'streetview'
+        videoUrl: videoUrl.trim() || null,
+        videoLearningSpec: learningSpec || null,
         userId: user.uid,
         createdAt: new Date(),
       });
@@ -248,6 +279,9 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
     setImage(null);
     setImagePreview(null);
     setImageryType('photo');
+    setVideoUrl('');
+    setLearningSpec(null);
+    setLearningSpecError('');
   };
 
   const goToPlay = () => {
@@ -431,6 +465,43 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
               {voiceTranscript && (
                 <div className="mt-2 p-2 rounded text-sm italic" style={{ background: 'var(--warm-cream)', color: 'var(--warm-brown)' }}>
                   Currently speaking: "{voiceTranscript}"
+                </div>
+              )}
+            </div>
+
+            {/* Video link -> AI-generated learning page spec (JSON) */}
+            <div>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--deep-brown)' }}>
+                Link video (tuỳ chọn)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={videoUrl}
+                  onChange={(e) => { setVideoUrl(e.target.value); setLearningSpecError(''); }}
+                  className="vintage-input w-full"
+                  placeholder="Dán link video YouTube liên quan đến kỷ niệm này..."
+                />
+                <button
+                  type="button"
+                  onClick={handleGenerateLearningPage}
+                  disabled={!videoUrl.trim() || learningSpecLoading}
+                  className="btn-sage whitespace-nowrap px-4 rounded-full font-medium disabled:opacity-50"
+                >
+                  {learningSpecLoading ? 'Đang tạo...' : 'Tạo trang học tập từ video'}
+                </button>
+              </div>
+
+              {learningSpecError && (
+                <div className="mt-2 p-2 rounded text-sm" style={{ background: '#fdeaea', color: '#a33' }}>
+                  {learningSpecError}
+                </div>
+              )}
+
+              {learningSpec && (
+                <div className="mt-2 p-3 rounded text-sm" style={{ background: 'var(--warm-cream)', color: 'var(--deep-brown)' }}>
+                  <div className="font-medium mb-1">Đã tạo spec trang học tập (sẽ lưu kèm kỷ niệm):</div>
+                  <div className="whitespace-pre-wrap" style={{ maxHeight: '10rem', overflowY: 'auto' }}>{learningSpec}</div>
                 </div>
               )}
             </div>
