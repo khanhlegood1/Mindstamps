@@ -383,8 +383,11 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
 
 
 // Navigation Footer Component
-const NavigationFooter = ({ currentPage, totalPages, onPrevPage, onNextPage, onPageSelect, showKeyboardHint = true }) => (
-  <div className="paper-texture border-t border-opacity-20 px-4 md:px-8 py-4 md:py-5 flex justify-between items-center gap-3 flex-shrink-0 bg-opacity-95" style={{ borderColor: 'var(--warm-brown)', backgroundColor: 'var(--paper-white)' }}>
+const NavigationFooter = ({ currentPage, totalPages, onPrevPage, onNextPage, onPageSelect, showKeyboardHint = true, position = 'bottom' }) => (
+  <div
+    className={`paper-texture ${position === 'top' ? 'border-b' : 'border-t'} border-opacity-20 px-4 md:px-8 py-4 md:py-5 flex justify-between items-center gap-3 flex-shrink-0 bg-opacity-95`}
+    style={{ borderColor: 'var(--warm-brown)', backgroundColor: 'var(--paper-white)' }}
+  >
     <div className="flex items-center space-x-4">
       <button
         onClick={onPrevPage}
@@ -735,9 +738,14 @@ const Journal = () => {
   }
 
   if (view === 'create') {
-    return <CreateMemory onBack={() => setView('list')} onSuccess={() => {
+    return <CreateMemory onBack={() => setView('list')} onSuccess={async () => {
+      // Re-fetch from Firestore so the journal is showing exactly what's
+      // in the database, then jump to the new memory. Memories are
+      // ordered newest-first, so the one just created is always page 0.
+      await loadMemories();
+      setCurrentPage(0);
+      setEditingMemoryId(null);
       setView('list');
-      loadMemories();
     }} />;
   }
 
@@ -846,6 +854,34 @@ const Journal = () => {
           </button>
         </div>
       </div>
+
+      {/* Top pager -- same Prev/Next + page controls as the bottom one,
+          just easier to reach without scrolling all the way down when
+          you have a lot of memories. Only worth showing once there's
+          more than one page to jump between. */}
+      {totalPages > 1 && (
+        <>
+          <div className="regular-only">
+            <NavigationFooter
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPrevPage={prevPage}
+              onNextPage={nextPage}
+              onPageSelect={setCurrentPage}
+              showKeyboardHint={false}
+              position="top"
+            />
+          </div>
+          <MobileNavigation
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPrevPage={prevPage}
+            onNextPage={nextPage}
+            onPageSelect={setCurrentPage}
+            position="top"
+          />
+        </>
+      )}
 
       {/* Journal Pages - left physical page = content, right physical page = map, always */}
       <div 

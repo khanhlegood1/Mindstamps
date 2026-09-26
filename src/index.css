@@ -301,6 +301,13 @@ body {
   display: none;
 }
 
+/* Same buttons as .mobile-nav, but for the copy placed right under the
+   header -- normal flow (not stuck to the bottom of the screen) so it
+   doesn't fight the header for the sticky top spot. */
+.mobile-nav-top {
+  display: none;
+}
+
 .game-action-bar {
   position: sticky;
   bottom: 0;
@@ -410,6 +417,15 @@ body {
     border-top: 1px solid var(--soft-beige);
     padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
     box-shadow: 0 -4px 12px rgba(139, 115, 85, 0.1);
+  }
+
+  .mobile-nav-top {
+    display: block;
+    background: var(--paper-white);
+    border-bottom: 1px solid var(--soft-beige);
+    padding: 0.75rem 1rem;
+    box-shadow: 0 4px 12px rgba(139, 115, 85, 0.1);
+    flex-shrink: 0;
   }
 }
 
