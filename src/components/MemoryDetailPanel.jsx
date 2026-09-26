@@ -27,6 +27,7 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
   const [editImageryType, setEditImageryType] = useState(memory.imageType || 'photo');
   const [editImage, setEditImage] = useState(null);
   const [editImagePreview, setEditImagePreview] = useState(memory.imageData || null);
+  const [editVideoUrl, setEditVideoUrl] = useState(memory.videoUrl || '');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -37,7 +38,8 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
     setEditImageryType(memory.imageType || 'photo');
     setEditImage(null);
     setEditImagePreview(memory.imageData || null);
-  }, [memory.id, memory.imageType, memory.imageData]);
+    setEditVideoUrl(memory.videoUrl || '');
+  }, [memory.id, memory.imageType, memory.imageData, memory.videoUrl]);
 
   const handleEditImageChange = (e) => {
     const file = e.target.files[0];
@@ -74,12 +76,14 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
         location: editLocation,
         imageType: editImageryType,
         imageData,
+        videoUrl: editVideoUrl.trim() || null,
       });
       memory.title = editTitle.trim();
       memory.story = editStory.trim();
       memory.location = editLocation;
       memory.imageType = editImageryType;
       memory.imageData = imageData;
+      memory.videoUrl = editVideoUrl.trim() || null;
       setIsEditing(false);
     } catch (error) {
       console.error('Error saving memory:', error);
@@ -100,6 +104,7 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
     setEditImageryType(memory.imageType || 'photo');
     setEditImage(null);
     setEditImagePreview(memory.imageData || null);
+    setEditVideoUrl(memory.videoUrl || '');
     setIsEditing(false);
   };
 
@@ -119,7 +124,19 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
         {!isEditing ? (
           <button
             type="button"
-            onClick={() => setIsEditing(true)}
+            onClick={() => {
+              // Reload every editable field — including the video link —
+              // from the current memory before opening the edit form, so
+              // stale in-progress edits never leak into a fresh edit session.
+              setEditTitle(memory.title || '');
+              setEditStory(memory.story || '');
+              setEditLocation(memory.location || null);
+              setEditImageryType(memory.imageType || 'photo');
+              setEditImage(null);
+              setEditImagePreview(memory.imageData || null);
+              setEditVideoUrl(memory.videoUrl || '');
+              setIsEditing(true);
+            }}
             className="flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-300"
             style={{ background: 'var(--dusty-rose)', color: 'white' }}
           >
@@ -209,6 +226,19 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
             onLocationChange={setEditLocation}
             height="11rem"
           />
+
+          <div>
+            <label className="block text-sm font-medium mb-2" style={{ color: 'var(--deep-brown)' }}>
+              Link video (tuỳ chọn)
+            </label>
+            <input
+              type="url"
+              value={editVideoUrl}
+              onChange={(e) => setEditVideoUrl(e.target.value)}
+              className="vintage-input w-full"
+              placeholder="Dán link video YouTube liên quan đến kỷ niệm này..."
+            />
+          </div>
 
           <div className="flex space-x-3 pt-2">
             <button
