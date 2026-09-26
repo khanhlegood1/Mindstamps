@@ -30,7 +30,7 @@ const Home = () => {
     <div className="side-by-side home-layout h-full">
       {/* Left Side - Welcome & Places everyone has saved */}
       <div className="flex flex-col justify-center items-center p-6 md:p-12 relative overflow-hidden">
-        <div className="max-w-lg text-center z-10">
+        <div className="w-full max-w-lg text-center z-10">
           <div className="mb-8">
             <h1 className="text-4xl md:text-5xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
               Hey there
@@ -56,7 +56,7 @@ const Home = () => {
             onClose={() => setSelectedMemory(null)}
           />
         ) : (
-          <div className="max-w-lg text-center z-10">
+          <div className="w-full max-w-lg text-center z-10">
             <div className="paper-texture cozy-shadow rounded-2xl p-6 sm:p-8 mb-8">
               <h2 className="text-2xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
                 Your journal
