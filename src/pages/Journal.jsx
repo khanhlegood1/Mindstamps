@@ -441,7 +441,7 @@ const NavigationFooter = ({ currentPage, totalPages, onPrevPage, onNextPage, onP
 );
 
 const Journal = () => {
-  const [user] = useAuthState(auth);
+  const [user, authLoading] = useAuthState(auth);
   const [view, setView] = useState('list'); // 'list' or 'create'
   const [memories, setMemories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -459,6 +459,17 @@ const Journal = () => {
       loadMemories();
     }
   }, [user]);
+
+  // Not signed in: this journal is private, so bounce straight to the
+  // login screen (the home page renders it when there's no user) instead
+  // of showing a "please sign in" placeholder here. Wait for Firebase to
+  // finish resolving the auth state first, or a signed-in user would get
+  // redirected for an instant on every page load/refresh.
+  useEffect(() => {
+    if (!authLoading && !user) {
+      window.location.hash = 'home';
+    }
+  }, [authLoading, user]);
 
   // Add keyboard navigation
   useEffect(() => {
@@ -723,15 +734,13 @@ const Journal = () => {
   };
 
   if (!user) {
+    // While signed-out, we're redirecting to the login screen (see the
+    // effect above) — render nothing but a brief loading placeholder so
+    // there's no flash of "sign in first" content.
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="paper-texture cozy-shadow rounded-2xl p-6 sm:p-8 text-center">
-          <h1 className="text-2xl font-journal font-semibold mb-4" style={{ color: 'var(--deep-brown)' }}>
-            You'll need to sign in first
-          </h1>
-          <p className="text-base" style={{ color: 'var(--warm-brown)' }}>
-            This journal is just for you
-          </p>
+        <div className="text-xl font-journal" style={{ color: 'var(--deep-brown)' }}>
+          Just a moment...
         </div>
       </div>
     );
