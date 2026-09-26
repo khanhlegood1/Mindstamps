@@ -8,6 +8,7 @@ import MobileNavigation from '../components/MobileNavigation';
 import MemoryLocationMap from '../components/MemoryLocationMap';
 import StreetView from '../components/StreetView';
 import useSwipeGesture from '../hooks/useSwipeGesture';
+import { fileToStoredImageDataUrl } from '../utils/imageStorage';
 
 const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditing = false }) => {
   const [editTitle, setEditTitle] = useState(memory.title);
@@ -74,11 +75,9 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
       if (editImageryType === 'streetview') {
         imageData = null;
       } else if (editImage) {
-        const reader = new FileReader();
-        imageData = await new Promise((resolve) => {
-          reader.onload = (ev) => resolve(ev.target.result);
-          reader.readAsDataURL(editImage);
-        });
+        // Resize/re-compress only as much as needed to fit Firestore's
+        // per-field size limit, keeping the best quality that still fits.
+        imageData = await fileToStoredImageDataUrl(editImage);
       }
 
       await onSave(memory.id, {

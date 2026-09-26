@@ -7,6 +7,7 @@ import VoiceRecorder from '../components/VoiceRecorder';
 import StreetView from '../components/StreetView';
 import { classifyVideoUrl } from '../lib/videoLink';
 import { generateLearningPageSpec } from '../lib/videoLearning';
+import { fileToStoredImageDataUrl } from '../utils/imageStorage';
 
 const CreateMemory = ({ onBack = null, onSuccess = null }) => {
   const [user] = useAuthState(auth);
@@ -239,11 +240,9 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
       // Street View panorama later.
       let imageData = null;
       if (imageryType === 'photo' && image) {
-        const reader = new FileReader();
-        imageData = await new Promise((resolve) => {
-          reader.onload = (e) => resolve(e.target.result);
-          reader.readAsDataURL(image);
-        });
+        // Resize/re-compress only as much as needed to fit Firestore's
+        // per-field size limit, keeping the best quality that still fits.
+        imageData = await fileToStoredImageDataUrl(image);
       }
 
       // Save memory to Firestore

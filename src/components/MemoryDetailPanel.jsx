@@ -3,6 +3,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import MemoryLocationMap from './MemoryLocationMap';
 import StreetView from './StreetView';
+import { fileToStoredImageDataUrl } from '../utils/imageStorage';
 
 const formatDate = (timestamp) => {
   if (!timestamp) return 'A moment in time';
@@ -61,11 +62,9 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
       if (editImageryType === 'streetview') {
         imageData = null;
       } else if (editImage) {
-        const reader = new FileReader();
-        imageData = await new Promise((resolve) => {
-          reader.onload = (ev) => resolve(ev.target.result);
-          reader.readAsDataURL(editImage);
-        });
+        // Resize/re-compress only as much as needed to fit Firestore's
+        // per-field size limit, keeping the best quality that still fits.
+        imageData = await fileToStoredImageDataUrl(editImage);
       }
 
       const memoryRef = doc(db, 'memories', memory.id);
