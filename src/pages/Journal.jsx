@@ -17,6 +17,7 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
   const [editImageryType, setEditImageryType] = useState(memory.imageType || 'photo');
   const [editImage, setEditImage] = useState(null);
   const [editImagePreview, setEditImagePreview] = useState(memory.imageData || null);
+  const [editVideoUrl, setEditVideoUrl] = useState(memory.videoUrl || '');
   const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -28,7 +29,8 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
     setEditImageryType(memory.imageType || 'photo');
     setEditImage(null);
     setEditImagePreview(memory.imageData || null);
-  }, [memory.id, memory.title, memory.story, memory.location, memory.imageType, memory.imageData]);
+    setEditVideoUrl(memory.videoUrl || '');
+  }, [memory.id, memory.title, memory.story, memory.location, memory.imageType, memory.imageData, memory.videoUrl]);
 
   const handleEditImageChange = (e) => {
     const file = e.target.files[0];
@@ -86,6 +88,7 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
         location: editLocation,
         imageType: editImageryType,
         imageData,
+        videoUrl: editVideoUrl.trim() || null,
       });
     } catch (error) {
       console.error('Error saving memory:', error);
@@ -102,6 +105,7 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
     setEditImageryType(memory.imageType || 'photo');
     setEditImage(null);
     setEditImagePreview(memory.imageData || null);
+    setEditVideoUrl(memory.videoUrl || '');
     setShowDeleteConfirm(false);
     onCancelEdit();
   };
@@ -231,6 +235,20 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
               placeholder="Tell your story..."
             />
 
+            {/* Video link (optional) */}
+            <div className="flex-shrink-0">
+              <label className="block text-xs font-medium mb-1" style={{ color: 'var(--warm-brown)' }}>
+                Link video (tuỳ chọn)
+              </label>
+              <input
+                type="url"
+                value={editVideoUrl}
+                onChange={(e) => setEditVideoUrl(e.target.value)}
+                className="vintage-input w-full text-sm"
+                placeholder="Dán link video YouTube liên quan đến kỷ niệm này..."
+              />
+            </div>
+
             {/* Edit buttons - fixed within page content area */}
             <div className="flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-opacity-20 flex-shrink-0" style={{ borderColor: 'var(--warm-brown)' }}>
               <div className="flex space-x-3">
@@ -311,6 +329,16 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
               id: memory.id,
               title: memory.title
             });
+            // Reload every editable field — including the video link —
+            // from the current memory right as edit mode opens, so a
+            // stale in-progress edit never leaks into a fresh session.
+            setEditTitle(memory.title);
+            setEditStory(memory.story);
+            setEditLocation(memory.location || null);
+            setEditImageryType(memory.imageType || 'photo');
+            setEditImage(null);
+            setEditImagePreview(memory.imageData || null);
+            setEditVideoUrl(memory.videoUrl || '');
             onEdit(memory.id);
           }}
           className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-medium transition-all duration-300 opacity-60 hover:opacity-100 group-hover:opacity-90 hover:scale-105"
