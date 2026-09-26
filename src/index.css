@@ -315,6 +315,17 @@ body {
   height: clamp(320px, 55dvh, 560px);
 }
 
+/* The journal page's location map sits inside nested flex-1 wrappers so
+   it can fill whatever space is left on tablet/laptop. On mobile the
+   two "pages" stack as independent rows, so if the text page ends up
+   taller than the map page's own content, there's no leftover height
+   for flex-grow to hand the map -- it silently collapses to 0. Give it
+   a guaranteed height on small screens instead of relying on flex. */
+.journal-map-box {
+  flex: 1;
+  min-height: 0;
+}
+
 .story-scroll {
   max-height: 8rem;
   overflow-y: auto;
@@ -378,6 +389,11 @@ body {
 
   .map-box {
     height: clamp(260px, 55dvh, 420px);
+  }
+
+  .journal-map-box {
+    flex: none;
+    height: clamp(240px, 45dvh, 380px);
   }
 
   .story-scroll {

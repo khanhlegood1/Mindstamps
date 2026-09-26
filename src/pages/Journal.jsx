@@ -283,7 +283,7 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
             Pin this memory's location
           </div>
           <div className="flex-1 min-h-0 flex flex-col space-y-2">
-            <div className="flex-1 min-h-0">
+            <div className="journal-map-box">
               <MemoryLocationMap
                 location={editLocation}
                 editable
@@ -370,7 +370,7 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
           </div>
         </div>
         <div className="flex-1 min-h-0 flex flex-col space-y-2">
-          <div className="flex-1 min-h-0">
+          <div className="journal-map-box">
             <MemoryLocationMap location={memory.location} editable={false} height="100%" />
           </div>
           <div className="text-sm font-medium flex-shrink-0" style={{ color: 'var(--warm-brown)' }}>
