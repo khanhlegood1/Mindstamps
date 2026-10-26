@@ -108,8 +108,19 @@ export default function LearningGamePanel({
       )}
 
       {error && (
-        <div className="mt-3 p-2.5 rounded-lg text-sm" style={{ background: '#fdeaea', color: '#a33' }}>
-          {error}
+        <div className="mt-3 p-3 rounded-lg text-sm" style={{ background: '#fdeaea', color: '#a33' }}>
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <span className="leading-relaxed">{error}</span>
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={!hasAnyMaterial || loading}
+              className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium text-white transition-all duration-200 hover:shadow-md disabled:opacity-50"
+              style={{ background: 'var(--warm-brown)' }}
+            >
+              🔁 Thử lại
+            </button>
+          </div>
         </div>
       )}
 

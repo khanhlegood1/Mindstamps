@@ -39,6 +39,23 @@ export function parseJSON(str) {
 
 export class VideoLearningError extends Error {}
 
+// Server hiện đã luôn trả thông báo tiếng Việt thân thiện; hàm này là lớp
+// phòng thủ cuối cùng: nếu lỡ còn sót chuỗi JSON kỹ thuật / câu lỗi tiếng Anh
+// của nhà cung cấp AI thì thay bằng câu chung dễ hiểu, không bao giờ hiển thị
+// nguyên cụm {"error":...} như sự cố 503 UNAVAILABLE đã gặp (27/10/2026).
+export function sanitizeAiErrorMessage(message) {
+  const raw = String(message || '').trim();
+  if (!raw) return 'Đã có lỗi khi gọi máy chủ AI. Vui lòng thử lại sau ít giây.';
+  const looksRawTechnical =
+    /^[\s]*[{[]/.test(raw) ||
+    /"code"\s*:|"status"\s*:|"message"\s*:/.test(raw) ||
+    /\b(UNAVAILABLE|INTERNAL|INVALID_ARGUMENT|DEADLINE_EXCEEDED|rate limit|overloaded|high demand)\b/i.test(raw);
+  if (looksRawTechnical) {
+    return 'Mô hình AI đang quá tải hoặc tạm gián đoạn. Vui lòng đợi vài giây rồi bấm thử lại.';
+  }
+  return raw;
+}
+
 /**
  * Gọi backend để lấy transcript video (YouTube) + sinh spec (JSON) qua Groq.
  * @param {string} videoUrl
@@ -54,17 +71,17 @@ export async function generateLearningPageSpec(videoUrl) {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new VideoLearningError(data?.error || `Lỗi máy chủ (${res.status})`);
+    throw new VideoLearningError(sanitizeAiErrorMessage(data?.error || `Lỗi máy chủ (${res.status})`));
   }
 
   let spec;
   try {
     spec = parseJSON(data.text ?? '').spec;
   } catch {
-    throw new VideoLearningError('AI trả về dữ liệu không đúng định dạng JSON mong đợi.');
+    throw new VideoLearningError('AI trả về dữ liệu không đúng định dạng JSON mong đợi. Bấm thử lại nhé.');
   }
   if (!spec) {
-    throw new VideoLearningError('Không nhận được nội dung spec từ AI.');
+    throw new VideoLearningError('Không nhận được nội dung spec từ AI. Vui lòng thử lại.');
   }
 
   return { spec, source: data.source };

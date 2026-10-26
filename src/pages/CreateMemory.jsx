@@ -502,8 +502,19 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
               </div>
 
               {learningSpecError && (
-                <div className="mt-2 p-2 rounded text-sm" style={{ background: '#fdeaea', color: '#a33' }}>
-                  {learningSpecError}
+                <div className="mt-2 p-2.5 rounded text-sm" style={{ background: '#fdeaea', color: '#a33' }}>
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <span className="leading-relaxed">{learningSpecError}</span>
+                    <button
+                      type="button"
+                      onClick={handleGenerateLearningPage}
+                      disabled={!videoUrl.trim() || learningSpecLoading}
+                      className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium text-white transition-all duration-200 hover:shadow-md disabled:opacity-50"
+                      style={{ background: 'var(--warm-brown)' }}
+                    >
+                      🔁 Thử lại
+                    </button>
+                  </div>
                 </div>
               )}
 
