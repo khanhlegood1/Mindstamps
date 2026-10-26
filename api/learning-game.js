@@ -25,19 +25,29 @@ import {
   MIN_TRANSCRIPT_CHARS,
   YoutubeTranscriptError,
 } from './_lib/youtubeTranscript.js'
+import { fetchWithTimeout, retryWithBudget, respondWithAiError, parseAiError } from './_lib/aiErrors.js'
 
 const GROQ_BASE_URL = 'https://api.groq.com/openai/v1'
 const GROQ_TEXT_MODEL = 'openai/gpt-oss-120b'
 const GROQ_VISION_MODEL = 'qwen/qwen3.6-27b'
 const GEMINI_MODEL = 'gemini-3.6-flash'
-const GEMINI_TIMEOUT_MS = 110_000
+// Thấp hơn maxDuration 120s của hàm (vercel.json) để chừa ngân sách cho cả
+// nhánh Groq lẫn retry — xem GLOBAL_BUDGET_MS trong handler.
+const GROQ_CALL_TIMEOUT_MS = 30_000
+const GROQ_ATTEMPT_BUDGET_MS = 32_000
+const GEMINI_TIMEOUT_MS = 80_000
+const GEMINI_BUDGET_MS = 95_000
+const GLOBAL_BUDGET_MS = 112_000
 const STORY_MAX_CHARS = 6000
 const TITLE_MAX_CHARS = 300
 
 class LearningGameError extends Error {
-  constructor(message, status = 500) {
+  // retryable: mặc định suy ra từ HTTP status (429/5xx retry được); các lỗi
+  // validate spec/JSON do chính code mình phát hiện thì truyền false rõ ràng.
+  constructor(message, status = 500, retryable = undefined) {
     super(message)
     this.status = status
+    if (retryable !== undefined) this.retryable = retryable
   }
 }
 
@@ -122,25 +132,38 @@ async function callGroqJson({ apiKey, model, textPrompt, imageDataUrl }) {
   if (imageDataUrl) {
     content.push({ type: 'image_url', image_url: { url: imageDataUrl } })
   }
-  const res = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: GAME_SPEC_SYSTEM_PROMPT },
-        { role: 'user', content },
-      ],
-      temperature: 0.75,
-      response_format: { type: 'json_object' },
-      // Sinh JSON spec (không phải HTML) nên output gọn; 2600 token dư sức
-      // cho 8 câu hỏi đầy đủ giải thích, đồng thời né giới hạn token/phút.
-      max_tokens: 2600,
-    }),
-  })
+  let res
+  try {
+    res = await fetchWithTimeout(
+      `${GROQ_BASE_URL}/chat/completions`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: GAME_SPEC_SYSTEM_PROMPT },
+            { role: 'user', content },
+          ],
+          temperature: 0.75,
+          response_format: { type: 'json_object' },
+          // Sinh JSON spec (không phải HTML) nên output gọn; 2600 token dư sức
+          // cho 8 câu hỏi đầy đủ giải thích, đồng thời né giới hạn token/phút.
+          max_tokens: 2600,
+        }),
+      },
+      GROQ_CALL_TIMEOUT_MS,
+    )
+  } catch (err) {
+    const info = parseAiError(err, 'groq')
+    throw new LearningGameError(info.upstreamMessage, info.status, true)
+  }
   if (!res.ok) {
     const errBody = await res.json().catch(() => ({}))
-    const status = res.status === 429 ? 429 : 502
+    // Giữ nguyên status upstream (429/503...) để phân loại retry + thông báo.
+    const status = [400, 401, 403, 404, 408, 422, 429, 500, 502, 503, 504].includes(res.status)
+      ? res.status
+      : 502
     throw new LearningGameError(errBody?.error?.message || `Groq error (${res.status})`, status)
   }
   const data = await res.json()
@@ -159,6 +182,7 @@ const withTimeout = (promise, ms) =>
             new LearningGameError(
               `Gemini xử lý quá lâu (vượt quá ${Math.round(ms / 1000)} giây). Hãy thử lại hoặc dùng video ngắn hơn.`,
               504,
+              true,
             ),
           ),
         ms,
@@ -166,7 +190,7 @@ const withTimeout = (promise, ms) =>
     ),
   ])
 
-async function callGeminiJson({ apiKey, textPrompt, videoUrl, imageDataUrl }) {
+async function callGeminiJson({ apiKey, textPrompt, videoUrl, imageDataUrl, timeoutMs = GEMINI_TIMEOUT_MS }) {
   const ai = new GoogleGenAI({ apiKey })
   const parts = [{ text: `${GAME_SPEC_SYSTEM_PROMPT}\n\n${textPrompt}` }]
 
@@ -186,17 +210,19 @@ async function callGeminiJson({ apiKey, textPrompt, videoUrl, imageDataUrl }) {
       contents: [{ role: 'user', parts }],
       config: { temperature: 0.75, responseMimeType: 'application/json' },
     }),
-    GEMINI_TIMEOUT_MS,
+    // Co giãn theo ngân sách thời gian còn lại của handler để không vượt
+    // maxDuration của serverless function.
+    timeoutMs,
   )
 
   if (response.promptFeedback?.blockReason) {
-    throw new LearningGameError(`Nội dung bị chặn (lý do: ${response.promptFeedback.blockReason})`, 400)
+    throw new LearningGameError(`Nội dung bị chặn (lý do: ${response.promptFeedback.blockReason})`, 400, false)
   }
   const firstCandidate = response.candidates?.[0]
   if (!firstCandidate) throw new LearningGameError('Không có kết quả trả về từ Gemini.', 502)
   if (firstCandidate.finishReason && firstCandidate.finishReason !== FinishReason.STOP) {
     if (firstCandidate.finishReason === FinishReason.SAFETY) {
-      throw new LearningGameError('Nội dung bị chặn do cài đặt an toàn.', 400)
+      throw new LearningGameError('Nội dung bị chặn do cài đặt an toàn.', 400, false)
     }
     throw new LearningGameError(`Gemini dừng vì lý do: ${firstCandidate.finishReason}.`, 502)
   }
@@ -206,14 +232,24 @@ async function callGeminiJson({ apiKey, textPrompt, videoUrl, imageDataUrl }) {
 // --- spec parsing & validation ----------------------------------------------
 
 function parseLooseJSON(str) {
-  if (!str || typeof str !== 'string') throw new LearningGameError('AI trả về nội dung rỗng.', 502)
+  // Lỗi định dạng spec: không retry trong cùng model (vòng ngoài vẫn thử model
+  // khác / Gemini) nên đánh dấu retryable=false rõ ràng.
+  if (!str || typeof str !== 'string') {
+    throw new LearningGameError('AI trả về nội dung rỗng.', 502, false)
+  }
   // Phòng hờ model bọc markdown fence hoặc kèm text bên ngoài JSON.
   const fenced = str.match(/```(?:json)?\s*([\s\S]*?)```/i)
   const candidate = fenced ? fenced[1] : str
   const start = candidate.indexOf('{')
   const end = candidate.lastIndexOf('}') + 1
-  if (start === -1 || end <= start) throw new LearningGameError('AI không trả về JSON hợp lệ.', 502)
-  return JSON.parse(candidate.substring(start, end))
+  if (start === -1 || end <= start) {
+    throw new LearningGameError('AI không trả về JSON hợp lệ.', 502, false)
+  }
+  try {
+    return JSON.parse(candidate.substring(start, end))
+  } catch {
+    throw new LearningGameError('AI trả về JSON không đọc được.', 502, false)
+  }
 }
 
 function asString(v, fallback = '') {
@@ -245,7 +281,11 @@ function normalizeSpec(raw) {
   }
 
   if (normalizedQuestions.length < 3) {
-    throw new LearningGameError('Game AI tạo ra chưa đủ câu hỏi hợp lệ (cần ít nhất 3). Vui lòng thử lại.', 502)
+    throw new LearningGameError(
+      'Game AI tạo ra chưa đủ câu hỏi hợp lệ (cần ít nhất 3). Vui lòng thử lại.',
+      502,
+      false,
+    )
   }
 
   return {
@@ -260,11 +300,14 @@ function normalizeSpec(raw) {
 // ---------------------------------------------------------------------------
 
 export default async function handler(req, res) {
+  const startedAt = Date.now()
+  const remainingGlobal = () => GLOBAL_BUDGET_MS - (Date.now() - startedAt)
+
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
   if (req.method === 'OPTIONS') return res.status(200).end()
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed', retryable: false })
 
   const groqKey = process.env.GROQ_API_KEY
   const geminiKey = process.env.GEMINI_API_KEY
@@ -272,6 +315,8 @@ export default async function handler(req, res) {
     return res.status(501).json({
       error:
         'Chưa cấu hình GROQ_API_KEY lẫn GEMINI_API_KEY trên server. Thêm ít nhất một trong hai trong Vercel → Settings → Environment Variables rồi redeploy.',
+      errorCode: 'NO_AI_KEY_CONFIGURED',
+      retryable: false,
     })
   }
 
@@ -279,7 +324,7 @@ export default async function handler(req, res) {
   try {
     body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {}
   } catch {
-    return res.status(400).json({ error: 'Body không phải JSON hợp lệ.' })
+    return res.status(400).json({ error: 'Body không phải JSON hợp lệ.', errorCode: 'BAD_REQUEST', retryable: false })
   }
 
   const videoUrl = (body.videoUrl || '').trim() || null
@@ -290,89 +335,121 @@ export default async function handler(req, res) {
   if (!videoUrl && !title && !story && !imageDataUrl) {
     return res.status(400).json({
       error: 'Chưa có tư liệu nào để tạo game: cần ít nhất link video, tiêu đề, câu chuyện hoặc ảnh.',
+      errorCode: 'NO_MATERIAL',
+      retryable: false,
     })
   }
   if (imageDataUrl && !parseDataUrl(imageDataUrl)) {
-    return res.status(400).json({ error: 'Ảnh gửi lên không đúng định dạng data URL.' })
-  }
-
-  // Bước 1 (nếu có video): lấy phụ đề YouTube miễn phí — không tốn key AI.
-  let transcript = null
-  let transcriptNote = ''
-  if (videoUrl) {
-    try {
-      transcript = await fetchYoutubeTranscript(videoUrl)
-      if (transcript.length < MIN_TRANSCRIPT_CHARS) {
-        transcriptNote = 'transcript-too-short'
-        console.warn('[learning-game] Transcript too short, Groq will rely on title/story; Gemini can watch directly.')
-      }
-    } catch (err) {
-      if (err instanceof YoutubeTranscriptError) {
-        console.warn('[learning-game] Transcript unavailable:', err.message)
-        transcript = null
-      } else {
-        throw err
-      }
-    }
-  }
-
-  const contextBlock = buildContextBlock({
-    title,
-    story,
-    transcript,
-    hasImage: Boolean(imageDataUrl),
-    hasVideo: Boolean(videoUrl),
-  })
-
-  // Bước 2: Groq trước (miễn phí). Có ảnh -> vision model; không ảnh -> text.
-  if (groqKey) {
-    const attempts = []
-    if (imageDataUrl) {
-      attempts.push({ model: GROQ_VISION_MODEL, withImage: true })
-    }
-    // Vẫn thử text model không kèm ảnh như một lượt dự phòng bên trong Groq
-    // (vision model có thể bị rate limit/khai tử — text model thường ổn định hơn).
-    attempts.push({ model: GROQ_TEXT_MODEL, withImage: false })
-
-    for (const attempt of attempts) {
-      try {
-        const raw = await callGroqJson({
-          apiKey: groqKey,
-          model: attempt.model,
-          textPrompt: contextBlock,
-          imageDataUrl: attempt.withImage ? imageDataUrl : null,
-        })
-        const spec = normalizeSpec(parseLooseJSON(raw))
-        return res.status(200).json({
-          spec,
-          source: attempt.withImage ? 'groq-vision' : 'groq-text',
-          transcript: transcriptNote || (transcript ? 'ok' : 'none'),
-        })
-      } catch (err) {
-        console.warn(`[learning-game] Groq attempt (${attempt.model}) failed:`, err?.message || err)
-      }
-    }
-  }
-
-  // Bước 3: Gemini multimodal — xem trực tiếp video + ảnh, không cần phụ đề.
-  if (!geminiKey) {
-    return res.status(502).json({
-      error:
-        'Groq chưa tạo được game và server chưa cấu hình GEMINI_API_KEY để dự phòng. Vui lòng thử lại sau, hoặc thêm GEMINI_API_KEY.',
-    })
+    return res.status(400).json({ error: 'Ảnh gửi lên không đúng định dạng data URL.', errorCode: 'BAD_IMAGE', retryable: false })
   }
 
   try {
-    const raw = await callGeminiJson({
-      apiKey: geminiKey,
-      textPrompt: contextBlock,
-      videoUrl,
-      imageDataUrl,
+    // Bước 1 (nếu có video): lấy phụ đề YouTube miễn phí — không tốn key AI.
+    let transcript = null
+    let transcriptNote = ''
+    if (videoUrl) {
+      try {
+        transcript = await fetchYoutubeTranscript(videoUrl)
+        if (transcript.length < MIN_TRANSCRIPT_CHARS) {
+          transcriptNote = 'transcript-too-short'
+          console.warn('[learning-game] Transcript too short, Groq will rely on title/story; Gemini can watch directly.')
+        }
+      } catch (err) {
+        if (err instanceof YoutubeTranscriptError) {
+          console.warn('[learning-game] Transcript unavailable:', err.message)
+          transcript = null
+        } else {
+          throw err
+        }
+      }
+    }
+
+    const contextBlock = buildContextBlock({
+      title,
+      story,
+      transcript,
+      hasImage: Boolean(imageDataUrl),
+      hasVideo: Boolean(videoUrl),
     })
+
+    // Bước 2: Groq trước (miễn phí). Có ảnh -> vision model; không ảnh -> text.
+    // Mỗi model được retry trong ngân sách riêng; lỗi 503/429 (quá tải tạm
+    // thời) thường hết sau 1-2 giây nên retry tự động cứu phần lớn trường hợp.
+    if (groqKey) {
+      const attempts = []
+      if (imageDataUrl) {
+        attempts.push({ model: GROQ_VISION_MODEL, withImage: true })
+      }
+      // Vẫn thử text model không kèm ảnh như một lượt dự phòng bên trong Groq
+      // (vision model có thể bị rate limit/khai tử — text model thường ổn định hơn).
+      attempts.push({ model: GROQ_TEXT_MODEL, withImage: false })
+
+      for (const attempt of attempts) {
+        // Hết ngân sách toàn cục thì dừng sớm, nhường thời gian cho nhánh Gemini.
+        if (remainingGlobal() < GROQ_ATTEMPT_BUDGET_MS + 10_000) {
+          console.warn('[learning-game] global budget low, skipping remaining Groq attempts')
+          break
+        }
+        try {
+          const raw = await retryWithBudget(
+            () =>
+              callGroqJson({
+                apiKey: groqKey,
+                model: attempt.model,
+                textPrompt: contextBlock,
+                imageDataUrl: attempt.withImage ? imageDataUrl : null,
+              }),
+            {
+              label: `learning-game/groq/${attempt.model}`,
+              budgetMs: Math.min(GROQ_ATTEMPT_BUDGET_MS, remainingGlobal() - 10_000),
+              maxAttempts: 2,
+              baseDelayMs: 800,
+            },
+          )
+          const spec = normalizeSpec(parseLooseJSON(raw))
+          return res.status(200).json({
+            spec,
+            source: attempt.withImage ? 'groq-vision' : 'groq-text',
+            transcript: transcriptNote || (transcript ? 'ok' : 'none'),
+          })
+        } catch (err) {
+          console.warn(`[learning-game] Groq attempt (${attempt.model}) failed:`, err?.message || err)
+        }
+      }
+    }
+
+    // Bước 3: Gemini multimodal — xem trực tiếp video + ảnh, không cần phụ đề.
+    if (!geminiKey) {
+      return res.status(502).json({
+        error:
+          'Groq chưa tạo được game và server chưa cấu hình GEMINI_API_KEY để dự phòng. Vui lòng thử lại sau, hoặc thêm GEMINI_API_KEY.',
+        errorCode: 'NO_GEMINI_FALLBACK',
+        retryable: true,
+      })
+    }
+
+    const geminiBudget = Math.min(GEMINI_BUDGET_MS, Math.max(20_000, remainingGlobal() - 3_000))
+    const raw = await retryWithBudget(
+      () =>
+        callGeminiJson({
+          apiKey: geminiKey,
+          textPrompt: contextBlock,
+          videoUrl,
+          imageDataUrl,
+          timeoutMs: Math.max(15_000, Math.min(GEMINI_TIMEOUT_MS, geminiBudget - 2_000)),
+        }),
+      {
+        label: 'learning-game/gemini',
+        budgetMs: geminiBudget,
+        maxAttempts: 2,
+        baseDelayMs: 1500,
+      },
+    )
     const spec = normalizeSpec(parseLooseJSON(raw))
     return res.status(200).json({ spec, source: 'gemini-fallback', transcript: transcript ? 'ok' : 'none' })
   } catch (err) {
-    console.error('[learning-game] Gemini error:', err?.message || err)
-    return res.status(err?.status || 500).json({ error: err?.message || 'Internal error' })
+    // Mọi lỗi nhà cung cấp (kể cả chuỗi JSON thô của SDK) đều được chuẩn hoá
+    // thành thông báo tiếng Việt — client không bao giờ thấy JSON kỹ thuật.
+    return respondWithAiError(res, err, 'ai')
   }
 }

@@ -15,6 +15,8 @@
 // tức thời mỗi lần chơi từ spec + ảnh memory hiện tại, nên không bao giờ vượt
 // giới hạn 1MB/fied của Firestore.
 
+import { sanitizeAiErrorMessage } from './videoLearning';
+
 export class LearningGameError extends Error {}
 
 // ---------------------------------------------------------------------------
@@ -105,12 +107,9 @@ export async function generateLearningGame({ title = '', story = '', videoUrl = 
 
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    if (res.status === 504 || res.status === 502 || res.status === 503) {
-      throw new LearningGameError(
-        'Server xử lý quá lâu và bị nền tảng cắt ngang. Hãy thử lại, hoặc dùng video ngắn/gọn hơn.',
-      );
-    }
-    throw new LearningGameError(data?.error || `Lỗi máy chủ (${res.status})`);
+    // Server đã trả thông báo tiếng Việt; sanitize phòng khi còn sót chuỗi
+    // JSON kỹ thuật của nhà cung cấp AI (sự cố 503 UNAVAILABLE 27/10/2026).
+    throw new LearningGameError(sanitizeAiErrorMessage(data?.error || `Lỗi máy chủ (${res.status})`));
   }
   if (!data?.spec || !Array.isArray(data.spec.questions) || data.spec.questions.length === 0) {
     throw new LearningGameError('AI trả về game spec không hợp lệ. Vui lòng thử lại.');

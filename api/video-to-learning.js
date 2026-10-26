@@ -20,6 +20,10 @@
 //     — dùng làm dự phòng khi không lấy được transcript YouTube)
 // rồi Redeploy. Đồng thời xem vercel.json — hàm này cần maxDuration cao hơn
 // mặc định vì bước Gemini xem video có thể mất tới ~110 giây.
+//
+// Lỗi nhà cung cấp (429/503 UNAVAILABLE/timeout...) được retry tự động trong
+// ngân sách thời gian cố định và LUÔN trả về thông báo tiếng Việt thân thiện
+// (xem api/_lib/aiErrors.js) — không bao giờ đẩy JSON lỗi thô ra client.
 
 import { GoogleGenAI, FinishReason } from '@google/genai'
 import {
@@ -27,16 +31,22 @@ import {
   MIN_TRANSCRIPT_CHARS,
   YoutubeTranscriptError,
 } from './_lib/youtubeTranscript.js'
+import { fetchWithTimeout, retryWithBudget, respondWithAiError, parseAiError } from './_lib/aiErrors.js'
 
 const GROQ_BASE_URL = 'https://api.groq.com/openai/v1'
 const GROQ_TEXT_MODEL = 'openai/gpt-oss-120b'
 const GEMINI_MODEL = 'gemini-3.6-flash'
-const GEMINI_TIMEOUT_MS = 110_000
+const GEMINI_TIMEOUT_MS = 95_000
+// Ngân sách tổng cho mỗi nhánh provider — luôn thấp hơn maxDuration 120s của
+// hàm (xem vercel.json), chừa thời gian cho transcript + truyền response.
+const GROQ_BUDGET_MS = 50_000
+const GEMINI_BUDGET_MS = 105_000
 
 class VideoToLearningError extends Error {
-  constructor(message, status = 500) {
+  constructor(message, status = 500, retryable = undefined) {
     super(message)
     this.status = status
+    if (retryable !== undefined) this.retryable = retryable
   }
 }
 
@@ -51,19 +61,34 @@ ${transcript}
 }
 
 async function callGroq(promptText, apiKey) {
-  const res = await fetch(`${GROQ_BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: GROQ_TEXT_MODEL,
-      messages: [{ role: 'user', content: promptText }],
-      temperature: 0.75,
-      response_format: { type: 'json_object' },
-    }),
-  })
+  // Giữ nguyên status upstream (429/503...) để tầng retry + friendly message
+  // phân loại đúng thay vì gộp tất cả thành 502.
+  let res
+  try {
+    res = await fetchWithTimeout(
+      `${GROQ_BASE_URL}/chat/completions`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: GROQ_TEXT_MODEL,
+          messages: [{ role: 'user', content: promptText }],
+          temperature: 0.75,
+          response_format: { type: 'json_object' },
+        }),
+      },
+      45_000,
+    )
+  } catch (err) {
+    // Mạng/timeout — gắn cờ retryable rõ ràng cho retryWithBudget.
+    const info = parseAiError(err, 'groq')
+    throw new VideoToLearningError(info.upstreamMessage, info.status, true)
+  }
+
   if (!res.ok) {
     const errBody = await res.json().catch(() => ({}))
-    throw new VideoToLearningError(errBody?.error?.message || `Groq error (${res.status})`, res.status === 429 ? 429 : 502)
+    const message = errBody?.error?.message || `Groq error (${res.status})`
+    throw new VideoToLearningError(message, res.status)
   }
   const data = await res.json()
   return data?.choices?.[0]?.message?.content || ''
@@ -80,6 +105,7 @@ const withTimeout = (promise, ms) =>
             new VideoToLearningError(
               `Gemini xử lý video quá lâu (vượt quá ${Math.round(ms / 1000)} giây). Video có thể quá dài — hãy thử video ngắn hơn.`,
               504,
+              true,
             ),
           ),
         ms,
@@ -102,13 +128,14 @@ async function callGemini(promptText, videoUrl, apiKey) {
   )
 
   if (response.promptFeedback?.blockReason) {
-    throw new VideoToLearningError(`Nội dung bị chặn (lý do: ${response.promptFeedback.blockReason})`, 400)
+    // Lỗi chính sách an toàn — retry vô nghĩa.
+    throw new VideoToLearningError(`Nội dung bị chặn (lý do: ${response.promptFeedback.blockReason})`, 400, false)
   }
   const firstCandidate = response.candidates?.[0]
   if (!firstCandidate) throw new VideoToLearningError('Không có kết quả trả về từ Gemini.', 502)
   if (firstCandidate.finishReason && firstCandidate.finishReason !== FinishReason.STOP) {
     if (firstCandidate.finishReason === FinishReason.SAFETY) {
-      throw new VideoToLearningError('Nội dung bị chặn do cài đặt an toàn.', 400)
+      throw new VideoToLearningError('Nội dung bị chặn do cài đặt an toàn.', 400, false)
     }
     throw new VideoToLearningError(`Gemini dừng vì lý do: ${firstCandidate.finishReason}.`, 502)
   }
@@ -127,13 +154,20 @@ export default async function handler(req, res) {
   if (!groqKey && !geminiKey) {
     return res.status(501).json({
       error: 'Chưa cấu hình GROQ_API_KEY lẫn GEMINI_API_KEY trên server. Thêm ít nhất một trong hai trong Vercel → Settings → Environment Variables rồi redeploy.',
+      errorCode: 'NO_AI_KEY_CONFIGURED',
+      retryable: false,
     })
   }
 
-  const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {}
+  let body
+  try {
+    body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body || {}
+  } catch {
+    return res.status(400).json({ error: 'Body không phải JSON hợp lệ.', errorCode: 'BAD_REQUEST', retryable: false })
+  }
   const { videoUrl, prompt } = body
-  if (!prompt) return res.status(400).json({ error: 'Missing prompt' })
-  if (!videoUrl) return res.status(400).json({ error: 'Missing videoUrl' })
+  if (!prompt) return res.status(400).json({ error: 'Missing prompt', errorCode: 'BAD_REQUEST', retryable: false })
+  if (!videoUrl) return res.status(400).json({ error: 'Missing videoUrl', errorCode: 'BAD_REQUEST', retryable: false })
 
   // Bước 1: thử lấy transcript + Groq (nhanh, miễn phí).
   let transcriptResult = null
@@ -150,7 +184,12 @@ export default async function handler(req, res) {
   if (hasEnoughTranscript && groqKey) {
     try {
       const finalPrompt = buildTranscriptOverridePrompt(prompt, transcriptResult)
-      const text = await callGroq(finalPrompt, groqKey)
+      // 503/429 của Groq là quá tải tạm thời — tự thử lại trong ngân sách ~50s.
+      const text = await retryWithBudget(() => callGroq(finalPrompt, groqKey), {
+        label: 'video-to-learning/groq',
+        budgetMs: GROQ_BUDGET_MS,
+        maxAttempts: 3,
+      })
       return res.status(200).json({ text, source: 'groq-transcript' })
     } catch (err) {
       console.warn('[video-to-learning] Groq failed, falling back to Gemini:', err?.message || err)
@@ -164,18 +203,28 @@ export default async function handler(req, res) {
   // Bước 2: dự phòng Gemini — xem trực tiếp video (không cần transcript/phụ đề).
   if (!geminiKey) {
     if (transcriptError instanceof YoutubeTranscriptError) {
-      return res.status(transcriptError.status).json({ error: transcriptError.message })
+      return res
+        .status(transcriptError.status)
+        .json({ error: transcriptError.message, errorCode: 'YOUTUBE_TRANSCRIPT', retryable: transcriptError.status >= 500 })
     }
     return res.status(502).json({
       error: 'Không lấy được transcript và chưa cấu hình GEMINI_API_KEY để dự phòng. Hãy thử video khác có phụ đề đầy đủ, hoặc thêm GEMINI_API_KEY.',
+      errorCode: 'NO_GEMINI_FALLBACK',
+      retryable: false,
     })
   }
 
   try {
-    const text = await callGemini(prompt, videoUrl, geminiKey)
+    // Gemini chỉ retry 2 lần (mỗi lần có thể tới 95s); retryWithBudget tự bỏ
+    // lượt thử thứ hai nếu lần đầu đã ăn gần hết ngân sách.
+    const text = await retryWithBudget(() => callGemini(prompt, videoUrl, geminiKey), {
+      label: 'video-to-learning/gemini',
+      budgetMs: GEMINI_BUDGET_MS,
+      maxAttempts: 2,
+      baseDelayMs: 1500,
+    })
     return res.status(200).json({ text, source: 'gemini-fallback' })
   } catch (err) {
-    console.error('[video-to-learning] Gemini error:', err?.message || err)
-    return res.status(err?.status || 500).json({ error: err?.message || 'Internal error' })
+    return respondWithAiError(res, err, 'gemini')
   }
 }
