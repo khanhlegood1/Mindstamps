@@ -8,6 +8,7 @@ import StreetView from '../components/StreetView';
 import { classifyVideoUrl } from '../lib/videoLink';
 import { generateLearningPageSpec } from '../lib/videoLearning';
 import { fileToStoredImageDataUrl } from '../utils/imageStorage';
+import LearningGamePanel from '../components/LearningGamePanel';
 
 const CreateMemory = ({ onBack = null, onSuccess = null }) => {
   const [user] = useAuthState(auth);
@@ -28,6 +29,11 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
   const [learningSpec, setLearningSpec] = useState(null);
   const [learningSpecLoading, setLearningSpecLoading] = useState(false);
   const [learningSpecError, setLearningSpecError] = useState('');
+  // "Tạo game giáo dục": JSON spec do AI sinh (lưu kèm memory ở field
+  // `learningGame`) + nguồn model đã dùng; HTML game được render client-side
+  // từ spec mỗi khi chơi (xem src/lib/learningGame.js).
+  const [gameSpec, setGameSpec] = useState(null);
+  const [gameSource, setGameSource] = useState('');
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -255,6 +261,8 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
         imageType: imageryType, // 'photo' | 'streetview'
         videoUrl: videoUrl.trim() || null,
         videoLearningSpec: learningSpec || null,
+        learningGame: gameSpec || null,
+        learningGameSource: gameSource || null,
         userId: user.uid,
         createdAt: new Date(),
       });
@@ -281,6 +289,8 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
     setVideoUrl('');
     setLearningSpec(null);
     setLearningSpecError('');
+    setGameSpec(null);
+    setGameSource('');
   };
 
   const goToPlay = () => {
@@ -503,6 +513,22 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
                   <div className="whitespace-pre-wrap" style={{ maxHeight: '10rem', overflowY: 'auto' }}>{learningSpec}</div>
                 </div>
               )}
+
+              {/* Nút "Tạo game giáo dục": AI đọc video + tiêu đề + câu chuyện
+                  + ảnh, sinh JSON game spec rồi render HTML chơi được ngay. */}
+              <div className="mt-3">
+                <LearningGamePanel
+                  videoUrl={videoUrl}
+                  title={title}
+                  story={story}
+                  imageData={imagePreview}
+                  memoryTitle={title}
+                  spec={gameSpec}
+                  onSpecChange={setGameSpec}
+                  source={gameSource}
+                  onSourceChange={setGameSource}
+                />
+              </div>
             </div>
 
             {/* Location Display */}

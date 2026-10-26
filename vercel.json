@@ -2,6 +2,9 @@
   "functions": {
     "api/video-to-learning.js": {
       "maxDuration": 120
+    },
+    "api/learning-game.js": {
+      "maxDuration": 120
     }
   }
 }

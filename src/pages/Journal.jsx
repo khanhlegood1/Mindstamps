@@ -9,6 +9,8 @@ import MemoryLocationMap from '../components/MemoryLocationMap';
 import StreetView from '../components/StreetView';
 import useSwipeGesture from '../hooks/useSwipeGesture';
 import { fileToStoredImageDataUrl } from '../utils/imageStorage';
+import LearningGamePanel from '../components/LearningGamePanel';
+import LearningGamePlayer from '../components/LearningGamePlayer';
 
 const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditing = false }) => {
   const [editTitle, setEditTitle] = useState(memory.title);
@@ -18,6 +20,8 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
   const [editImage, setEditImage] = useState(null);
   const [editImagePreview, setEditImagePreview] = useState(memory.imageData || null);
   const [editVideoUrl, setEditVideoUrl] = useState(memory.videoUrl || '');
+  const [editGameSpec, setEditGameSpec] = useState(memory.learningGame || null);
+  const [editGameSource, setEditGameSource] = useState(memory.learningGameSource || '');
   const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -30,7 +34,9 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
     setEditImage(null);
     setEditImagePreview(memory.imageData || null);
     setEditVideoUrl(memory.videoUrl || '');
-  }, [memory.id, memory.title, memory.story, memory.location, memory.imageType, memory.imageData, memory.videoUrl]);
+    setEditGameSpec(memory.learningGame || null);
+    setEditGameSource(memory.learningGameSource || '');
+  }, [memory.id, memory.title, memory.story, memory.location, memory.imageType, memory.imageData, memory.videoUrl, memory.learningGame, memory.learningGameSource]);
 
   const handleEditImageChange = (e) => {
     const file = e.target.files[0];
@@ -89,6 +95,8 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
         imageType: editImageryType,
         imageData,
         videoUrl: editVideoUrl.trim() || null,
+        learningGame: editGameSpec || null,
+        learningGameSource: editGameSource || null,
       });
     } catch (error) {
       console.error('Error saving memory:', error);
@@ -106,6 +114,8 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
     setEditImage(null);
     setEditImagePreview(memory.imageData || null);
     setEditVideoUrl(memory.videoUrl || '');
+    setEditGameSpec(memory.learningGame || null);
+    setEditGameSource(memory.learningGameSource || '');
     setShowDeleteConfirm(false);
     onCancelEdit();
   };
@@ -249,6 +259,22 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
               />
             </div>
 
+            {/* Tạo game giáo dục từ video + tiêu đề + câu chuyện + ảnh */}
+            <div className="flex-shrink-0">
+              <LearningGamePanel
+                videoUrl={editVideoUrl}
+                title={editTitle}
+                story={editStory}
+                imageData={editImagePreview}
+                memoryTitle={editTitle}
+                spec={editGameSpec}
+                onSpecChange={setEditGameSpec}
+                source={editGameSource}
+                onSourceChange={setEditGameSource}
+                height={380}
+              />
+            </div>
+
             {/* Edit buttons - fixed within page content area */}
             <div className="flex flex-wrap justify-between items-center gap-3 pt-4 border-t border-opacity-20 flex-shrink-0" style={{ borderColor: 'var(--warm-brown)' }}>
               <div className="flex space-x-3">
@@ -339,6 +365,8 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
             setEditImage(null);
             setEditImagePreview(memory.imageData || null);
             setEditVideoUrl(memory.videoUrl || '');
+            setEditGameSpec(memory.learningGame || null);
+            setEditGameSource(memory.learningGameSource || '');
             onEdit(memory.id);
           }}
           className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-medium transition-all duration-300 opacity-60 hover:opacity-100 group-hover:opacity-90 hover:scale-105"
@@ -386,6 +414,19 @@ const MemorySpread = ({ memory, onEdit, onSave, onCancelEdit, onDelete, isEditin
               {memory.story}
             </p>
           </div>
+
+          {/* Game giáo dục đã lưu: chơi lại ngay trong trang nhật ký */}
+          {memory.learningGame && (
+            <div>
+              <LearningGamePlayer
+                spec={memory.learningGame}
+                coverImage={memory.imageData}
+                memoryTitle={memory.title}
+                source={memory.learningGameSource}
+                height={380}
+              />
+            </div>
+          )}
         </div>
       </div>
 
