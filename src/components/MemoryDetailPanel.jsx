@@ -4,6 +4,8 @@ import { db } from '../config/firebase';
 import MemoryLocationMap from './MemoryLocationMap';
 import StreetView from './StreetView';
 import { fileToStoredImageDataUrl } from '../utils/imageStorage';
+import LearningGamePanel from './LearningGamePanel';
+import LearningGamePlayer from './LearningGamePlayer';
 
 const formatDate = (timestamp) => {
   if (!timestamp) return 'A moment in time';
@@ -28,6 +30,8 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
   const [editImage, setEditImage] = useState(null);
   const [editImagePreview, setEditImagePreview] = useState(memory.imageData || null);
   const [editVideoUrl, setEditVideoUrl] = useState(memory.videoUrl || '');
+  const [editGameSpec, setEditGameSpec] = useState(memory.learningGame || null);
+  const [editGameSource, setEditGameSource] = useState(memory.learningGameSource || '');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -39,7 +43,9 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
     setEditImage(null);
     setEditImagePreview(memory.imageData || null);
     setEditVideoUrl(memory.videoUrl || '');
-  }, [memory.id, memory.imageType, memory.imageData, memory.videoUrl]);
+    setEditGameSpec(memory.learningGame || null);
+    setEditGameSource(memory.learningGameSource || '');
+  }, [memory.id, memory.imageType, memory.imageData, memory.videoUrl, memory.learningGame, memory.learningGameSource]);
 
   const handleEditImageChange = (e) => {
     const file = e.target.files[0];
@@ -77,6 +83,8 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
         imageType: editImageryType,
         imageData,
         videoUrl: editVideoUrl.trim() || null,
+        learningGame: editGameSpec || null,
+        learningGameSource: editGameSource || null,
       });
       memory.title = editTitle.trim();
       memory.story = editStory.trim();
@@ -84,6 +92,8 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
       memory.imageType = editImageryType;
       memory.imageData = imageData;
       memory.videoUrl = editVideoUrl.trim() || null;
+      memory.learningGame = editGameSpec || null;
+      memory.learningGameSource = editGameSource || null;
       setIsEditing(false);
     } catch (error) {
       console.error('Error saving memory:', error);
@@ -105,6 +115,8 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
     setEditImage(null);
     setEditImagePreview(memory.imageData || null);
     setEditVideoUrl(memory.videoUrl || '');
+    setEditGameSpec(memory.learningGame || null);
+    setEditGameSource(memory.learningGameSource || '');
     setIsEditing(false);
   };
 
@@ -135,6 +147,8 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
               setEditImage(null);
               setEditImagePreview(memory.imageData || null);
               setEditVideoUrl(memory.videoUrl || '');
+              setEditGameSpec(memory.learningGame || null);
+              setEditGameSource(memory.learningGameSource || '');
               setIsEditing(true);
             }}
             className="flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-300"
@@ -240,6 +254,20 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
             />
           </div>
 
+          {/* Tạo game giáo dục từ video + tiêu đề + câu chuyện + ảnh */}
+          <LearningGamePanel
+            videoUrl={editVideoUrl}
+            title={editTitle}
+            story={editStory}
+            imageData={editImagePreview}
+            memoryTitle={editTitle}
+            spec={editGameSpec}
+            onSpecChange={setEditGameSpec}
+            source={editGameSource}
+            onSourceChange={setEditGameSource}
+            height={380}
+          />
+
           <div className="flex space-x-3 pt-2">
             <button
               onClick={handleSave}
@@ -289,6 +317,17 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
             <p className="font-journal leading-relaxed text-base whitespace-pre-wrap" style={{ color: 'var(--ink-black)' }}>
               {memory.story}
             </p>
+          )}
+
+          {/* Game giáo dục đã lưu của memory — chơi ngay tại panel chi tiết */}
+          {memory.learningGame && (
+            <LearningGamePlayer
+              spec={memory.learningGame}
+              coverImage={memory.imageData}
+              memoryTitle={memory.title}
+              source={memory.learningGameSource}
+              height={400}
+            />
           )}
 
           <MemoryLocationMap location={memory.location} height="11rem" />
