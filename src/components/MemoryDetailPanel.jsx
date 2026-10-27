@@ -5,7 +5,8 @@ import MemoryLocationMap from './MemoryLocationMap';
 import StreetView from './StreetView';
 import { fileToStoredImageDataUrl } from '../utils/imageStorage';
 import LearningGamePanel from './LearningGamePanel';
-import LearningGamePlayer from './LearningGamePlayer';
+import LearningGameLibrary from './LearningGameLibrary';
+import { normalizeGameVersions } from '../lib/learningGame';
 
 const formatDate = (timestamp) => {
   if (!timestamp) return 'A moment in time';
@@ -30,8 +31,7 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
   const [editImage, setEditImage] = useState(null);
   const [editImagePreview, setEditImagePreview] = useState(memory.imageData || null);
   const [editVideoUrl, setEditVideoUrl] = useState(memory.videoUrl || '');
-  const [editGameSpec, setEditGameSpec] = useState(memory.learningGame || null);
-  const [editGameSource, setEditGameSource] = useState(memory.learningGameSource || '');
+  const [editGameVersions, setEditGameVersions] = useState(() => normalizeGameVersions(memory));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -43,9 +43,14 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
     setEditImage(null);
     setEditImagePreview(memory.imageData || null);
     setEditVideoUrl(memory.videoUrl || '');
-    setEditGameSpec(memory.learningGame || null);
-    setEditGameSource(memory.learningGameSource || '');
-  }, [memory.id, memory.imageType, memory.imageData, memory.videoUrl, memory.learningGame, memory.learningGameSource]);
+    setEditGameVersions(
+      normalizeGameVersions({
+        learningGameVersions: memory.learningGameVersions,
+        learningGame: memory.learningGame,
+        learningGameSource: memory.learningGameSource,
+      }),
+    );
+  }, [memory.id, memory.imageType, memory.imageData, memory.videoUrl, memory.learningGameVersions, memory.learningGame, memory.learningGameSource]);
 
   const handleEditImageChange = (e) => {
     const file = e.target.files[0];
@@ -83,8 +88,7 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
         imageType: editImageryType,
         imageData,
         videoUrl: editVideoUrl.trim() || null,
-        learningGame: editGameSpec || null,
-        learningGameSource: editGameSource || null,
+        learningGameVersions: editGameVersions,
       });
       memory.title = editTitle.trim();
       memory.story = editStory.trim();
@@ -92,8 +96,7 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
       memory.imageType = editImageryType;
       memory.imageData = imageData;
       memory.videoUrl = editVideoUrl.trim() || null;
-      memory.learningGame = editGameSpec || null;
-      memory.learningGameSource = editGameSource || null;
+      memory.learningGameVersions = editGameVersions;
       setIsEditing(false);
     } catch (error) {
       console.error('Error saving memory:', error);
@@ -115,8 +118,7 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
     setEditImage(null);
     setEditImagePreview(memory.imageData || null);
     setEditVideoUrl(memory.videoUrl || '');
-    setEditGameSpec(memory.learningGame || null);
-    setEditGameSource(memory.learningGameSource || '');
+    setEditGameVersions(normalizeGameVersions(memory));
     setIsEditing(false);
   };
 
@@ -147,8 +149,7 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
               setEditImage(null);
               setEditImagePreview(memory.imageData || null);
               setEditVideoUrl(memory.videoUrl || '');
-              setEditGameSpec(memory.learningGame || null);
-              setEditGameSource(memory.learningGameSource || '');
+              setEditGameVersions(normalizeGameVersions(memory));
               setIsEditing(true);
             }}
             className="flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-medium transition-all duration-300"
@@ -254,17 +255,15 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
             />
           </div>
 
-          {/* Tạo game giáo dục từ video + tiêu đề + câu chuyện + ảnh */}
+          {/* Tạo game giáo dục: mỗi lần bấm thêm một phiên bản phong cách khác */}
           <LearningGamePanel
             videoUrl={editVideoUrl}
             title={editTitle}
             story={editStory}
             imageData={editImagePreview}
             memoryTitle={editTitle}
-            spec={editGameSpec}
-            onSpecChange={setEditGameSpec}
-            source={editGameSource}
-            onSourceChange={setEditGameSource}
+            versions={editGameVersions}
+            onVersionsChange={setEditGameVersions}
             height={380}
           />
 
@@ -319,16 +318,9 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
             </p>
           )}
 
-          {/* Game giáo dục đã lưu của memory — chơi ngay tại panel chi tiết */}
-          {memory.learningGame && (
-            <LearningGamePlayer
-              spec={memory.learningGame}
-              coverImage={memory.imageData}
-              memoryTitle={memory.title}
-              source={memory.learningGameSource}
-              height={400}
-            />
-          )}
+          {/* Tất cả phiên bản game giáo dục đã lưu — chơi ngay tại panel
+              chi tiết (tương thích memory cũ chỉ có một game đơn lẻ). */}
+          <LearningGameLibrary memory={memory} coverImage={memory.imageData} height={400} />
 
           <MemoryLocationMap location={memory.location} height="11rem" />
         </div>

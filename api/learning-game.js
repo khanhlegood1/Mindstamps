@@ -55,40 +55,143 @@ class LearningGameError extends Error {
 // Prompt: AI trả JSON spec, client mới là nơi render HTML. Giới hạn schema
 // chặt để renderer khuôn mẫu luôn chạy được (không phụ thuộc AI viết JS/HTML
 // sống — tránh hẳn bug HTML cắt cụt/JS lỗi của hướng sinh code tự do).
+//
+// Mỗi lần tạo là một PHIÊN BẢN với phong cách chơi khác nhau: server chọn
+// style chưa dùng (xem pickNextStyle) và dùng đúng schema của style đó.
 // ---------------------------------------------------------------------------
-const GAME_SPEC_SYSTEM_PROMPT = `Bạn là một nhà sư phạm (pedagogist) kiêm nhà thiết kế game giáo dục đầu ngành.
-Nhiệm vụ: từ tư liệu được cung cấp (phụ đề/video, tiêu đề, câu chuyện của một "memory" trên nhật ký Mindstamps, và có thể cả ảnh), hãy tạo một MINI GAME TRẮC NGHIỆM giáo dục giúp người chơi hiểu sâu nội dung video và gắn nó với kỷ niệm cá nhân.
+
+const COMMON_PROMPT_RULES = `Bạn là một nhà sư phạm (pedagogist) kiêm nhà thiết kế game giáo dục đầu ngành.
+Nhiệm vụ: từ tư liệu được cung cấp (phụ đề/video, tiêu đề, câu chuyện của một "memory" trên nhật ký Mindstamps, và có thể cả ảnh), hãy tạo một MINI GAME giáo dục giúp người chơi hiểu sâu nội dung video và gắn nó với kỷ niệm cá nhân.
 
 NGUYÊN TẮC NỘI DUNG:
-1. Câu hỏi phải DẠY thật sự: giải thích đúng khái niệm/sự kiện trong video, không hỏi mẹo vặt.
-2. Trộn 3 loại câu hỏi (chỉ dùng loại có tư liệu tương ứng):
+1. Mọi câu hỏi/tình huống/thẻ đều phải DẠY thật sự: bám đúng khái niệm, sự kiện, quy trình trong video, không hỏi mẹo vặt.
+2. Trộn 3 nguồn tư liệu (chỉ dùng loại có tư liệu tương ứng), ghi ở field "topic" với giá trị "video" | "memory" | "image":
    - "video": kiểm tra ý chính, quy trình, khái niệm rút từ nội dung video.
-   - "memory": liên kết kiến thức video với tiêu đề và câu chuyện của memory (suy luận, phản hồi cá nhân hoá).
+   - "memory": liên kết kiến thức video với tiêu đề và câu chuyện của memory (suy luận, cá nhân hoá).
    - "image": quan sát chi tiết trong ảnh và nối với bài học.
-3. Mỗi đáp án sai phải hợp lý một cách "nghe được" (không đáp án rác rõ ràng); đáp án đúng được trộn ngẫu nhiên vị trí.
+3. Các lựa chọn/nhận định sai phải hợp lý một cách "nghe được" (không có đáp án rác rõ ràng).
 4. Phần "explanation" dạy lại 1-2 câu, có thể dựa trên video/story/ảnh.
-5. Toàn bộ chữ người học đọc (tiêu đề, intro, câu hỏi, lựa chọn, giải thích, lời kết) viết bằng TIẾNG VIỆT tự nhiên, ấm áp, dễ hiểu cho người phổ thông; giữ nguyên danh riêng/thuật ngữ không dịch được.
-6. intro là một bài học ngắn 4-7 câu tóm tắt điều quan trọng nhất của video VÀ cách nó gắn với memory này.
+5. Toàn bộ chữ người học đọc viết bằng TIẾNG VIỆT tự nhiên, ấm áp, dễ hiểu cho người phổ thông; giữ nguyên danh riêng/thuật ngữ không dịch được.
+6. "intro" là bài học ngắn 4-7 câu tóm tắt điều quan trọng nhất của video VÀ cách nó gắn với memory này; "gameTitle" ngắn gọn vui tươi, "closing" là lời kết khuyến khích.
 
-SCHEMA JSON BẮT BUỘC (chỉ trả JSON hợp lệ, không markdown, không chữ nào ngoài JSON):
+CHỈ trả JSON hợp lệ theo đúng schema được yêu cầu, không markdown, không chữ nào ngoài JSON.`
+
+const STYLE_GUIDES = {
+  quiz: {
+    label: 'Trắc nghiệm 4 đáp án',
+    minItems: 3,
+    target: '6 đến 8',
+    schema: `Schema JSON BẮT BUỘC:
 {
-  "gameTitle": "string, tên game ngắn gọn, vui tươi",
-  "tagline": "string, một câu phụ đề",
-  "intro": "string, bài học mở đầu, xuống dòng bằng \\n được",
+  "gameTitle": "string", "tagline": "string", "intro": "string (\\n để xuống dòng)",
   "questions": [
     {
-      "emoji": "một emoji phù hợp câu hỏi",
+      "emoji": "một emoji phù hợp",
       "topic": "video | memory | image",
       "question": "string",
       "choices": ["đáp án A", "đáp án B", "đáp án C", "đáp án D"],
       "answerIndex": 0,
-      "explanation": "string, giải thích vì sao đáp án answerIndex đúng"
+      "explanation": "string, giải thích vì sao answerIndex đúng"
     }
   ],
-  "closing": "string, lời kết khuyến khích sau khi chơi xong"
+  "closing": "string"
+}
+Tạo ${'6 đến 8'} câu hỏi. Mỗi câu ĐÚNG 4 lựa chọn, answerIndex trong khoảng 0..3.`,
+  },
+  truefalse: {
+    label: 'Đúng hay Sai',
+    minItems: 3,
+    target: '7 đến 9',
+    schema: `Schema JSON BẮT BUỘC:
+{
+  "gameTitle": "string", "tagline": "string", "intro": "string (\\n để xuống dòng)",
+  "statements": [
+    {
+      "emoji": "một emoji phù hợp",
+      "topic": "video | memory | image",
+      "statement": "một nhận định để người chơi phán đoán Đúng hay Sai",
+      "isTrue": true,
+      "explanation": "string, giải thích vì sao nhận định này đúng hoặc sai"
+    }
+  ],
+  "closing": "string"
+}
+Tạo 7 đến 9 nhận định, trộn lẫn hợp lý giữa isTrue true và false (không dồn cùng một giá trị).`,
+  },
+  matching: {
+    label: 'Ghép cặp khái niệm',
+    minItems: 3,
+    target: '5 đến 7',
+    schema: `Schema JSON BẮT BUỘC:
+{
+  "gameTitle": "string", "tagline": "string", "intro": "string (\\n để xuống dòng)",
+  "pairs": [
+    { "left": "khái niệm/thuật ngữ/tên gọi ngắn gọn", "right": "định nghĩa hoặc ý nghĩa tương ứng, 1-2 câu" }
+  ],
+  "closing": "string"
+}
+Tạo 5 đến 7 cặp. Mọi "left" phải phân biệt rõ và mỗi "right" chỉ khớp đúng một "left".`,
+  },
+  flashcards: {
+    label: 'Thẻ ghi nhớ lật mặt',
+    minItems: 3,
+    target: '8 đến 10',
+    schema: `Schema JSON BẮT BUỘC:
+{
+  "gameTitle": "string", "tagline": "string", "intro": "string (\\n để xuống dòng)",
+  "cards": [
+    {
+      "emoji": "một emoji gợi nhớ",
+      "front": "câu hỏi/thuật ngữ/khái niệm chính, ngắn gọn",
+      "back": "đáp án hoặc phần giải thích đầy đủ, 1-3 câu"
+    }
+  ],
+  "closing": "string"
+}
+Tạo 8 đến 10 thẻ. Mặt "front" ngắn, mặt "back" thực sự dạy được kiến thức.`,
+  },
+  scenario: {
+    label: 'Tình huống ra quyết định',
+    minItems: 3,
+    target: '5 đến 6',
+    schema: `Schema JSON BẮT BUỘC:
+{
+  "gameTitle": "string", "tagline": "string", "intro": "string (\\n để xuống dòng)",
+  "scenarios": [
+    {
+      "emoji": "một emoji phù hợp tình huống",
+      "topic": "video | memory | image",
+      "situation": "mô tả bối cảnh/tình huống cần ra quyết định, 2-4 câu",
+      "choices": ["phương án A", "phương án B", "phương án C"],
+      "bestIndex": 0,
+      "explanation": "string, giải thích vì sao bestIndex là lựa chọn hợp lý nhất"
+    }
+  ],
+  "closing": "string"
+}
+Tạo 5 đến 6 tình huống. Mỗi tình huống ĐÚNG 3 phương án, bestIndex trong khoảng 0..2; các phương án không phải phải "nghe hợp lý" chứ không được sai rõ ràng.`,
+  },
 }
 
-Số lượng câu hỏi: từ 6 đến 8. Mỗi câu ĐÚNG 4 lựa chọn, answerIndex nằm trong khoảng 0..3.`
+const GAME_STYLE_IDS = Object.keys(STYLE_GUIDES)
+
+// Chọn style cho phiên bản mới: ưu tiên style CHƯA từng dùng; khi đã dùng hết
+// thì chọn ngẫu nhiên trong số các style khác phiên bản gần nhất.
+function pickNextStyle(excludeStyles = []) {
+  const used = new Set(Array.isArray(excludeStyles) ? excludeStyles : [])
+  const fresh = GAME_STYLE_IDS.filter((id) => !used.has(id))
+  if (fresh.length > 0) {
+    return fresh[Math.floor(Math.random() * fresh.length)]
+  }
+  const last = excludeStyles[excludeStyles.length - 1]
+  const pool = GAME_STYLE_IDS.filter((id) => id !== last)
+  return pool[Math.floor(Math.random() * pool.length)]
+}
+
+function buildSystemPrompt(style) {
+  const guide = STYLE_GUIDES[style] || STYLE_GUIDES.quiz
+  return `${COMMON_PROMPT_RULES}\n\nPHONG CÁCH GAME LẦN NÀY: ${guide.label}.\n${guide.schema}`
+}
 
 function clip(text, max) {
   const t = (text || '').trim()
@@ -127,7 +230,7 @@ function parseDataUrl(dataUrl) {
 
 // --- Groq -------------------------------------------------------------------
 
-async function callGroqJson({ apiKey, model, textPrompt, imageDataUrl }) {
+async function callGroqJson({ apiKey, model, textPrompt, imageDataUrl, systemPrompt }) {
   const content = [{ type: 'text', text: textPrompt }]
   if (imageDataUrl) {
     content.push({ type: 'image_url', image_url: { url: imageDataUrl } })
@@ -142,7 +245,7 @@ async function callGroqJson({ apiKey, model, textPrompt, imageDataUrl }) {
         body: JSON.stringify({
           model,
           messages: [
-            { role: 'system', content: GAME_SPEC_SYSTEM_PROMPT },
+            { role: 'system', content: systemPrompt },
             { role: 'user', content },
           ],
           temperature: 0.75,
@@ -190,9 +293,9 @@ const withTimeout = (promise, ms) =>
     ),
   ])
 
-async function callGeminiJson({ apiKey, textPrompt, videoUrl, imageDataUrl, timeoutMs = GEMINI_TIMEOUT_MS }) {
+async function callGeminiJson({ apiKey, textPrompt, videoUrl, imageDataUrl, systemPrompt, timeoutMs = GEMINI_TIMEOUT_MS }) {
   const ai = new GoogleGenAI({ apiKey })
-  const parts = [{ text: `${GAME_SPEC_SYSTEM_PROMPT}\n\n${textPrompt}` }]
+  const parts = [{ text: `${systemPrompt}\n\n${textPrompt}` }]
 
   const parsedImage = imageDataUrl ? parseDataUrl(imageDataUrl) : null
   if (parsedImage) {
@@ -256,45 +359,124 @@ function asString(v, fallback = '') {
   return typeof v === 'string' && v.trim() ? v.trim() : fallback
 }
 
-function normalizeSpec(raw) {
-  const questions = Array.isArray(raw?.questions) ? raw.questions : []
-  const normalizedQuestions = []
+function normalizeTopic(v) {
+  return ['video', 'memory', 'image'].includes(v) ? v : 'video'
+}
 
-  for (const q of questions) {
-    if (!q || typeof q !== 'object') continue
-    const choices = Array.isArray(q.choices)
-      ? q.choices.map((c) => asString(c)).filter(Boolean).slice(0, 4)
-      : []
-    if (choices.length !== 4) continue
-    let answerIndex = Number.parseInt(q.answerIndex, 10)
-    if (!Number.isInteger(answerIndex) || answerIndex < 0 || answerIndex > 3) {
-      answerIndex = 0
-    }
-    normalizedQuestions.push({
-      emoji: asString(q.emoji, '🎯').slice(0, 8),
-      topic: ['video', 'memory', 'image'].includes(q.topic) ? q.topic : 'video',
-      question: asString(q.question),
-      choices,
-      answerIndex,
-      explanation: asString(q.explanation, 'Hãy nhớ lại phần giải thích trong bài học nhé.'),
-    })
-  }
-
-  if (normalizedQuestions.length < 3) {
-    throw new LearningGameError(
-      'Game AI tạo ra chưa đủ câu hỏi hợp lệ (cần ít nhất 3). Vui lòng thử lại.',
-      502,
-      false,
-    )
-  }
-
+function baseFields(raw, style) {
   return {
+    style,
     gameTitle: asString(raw?.gameTitle, 'Game giáo dục từ kỷ niệm'),
     tagline: asString(raw?.tagline, 'Chơi để hiểu sâu hơn câu chuyện của bạn'),
     intro: asString(raw?.intro),
-    questions: normalizedQuestions,
     closing: asString(raw?.closing, 'Cảm ơn bạn đã chơi — mỗi kỷ niệm đều là một bài học đáng nhớ.'),
   }
+}
+
+// Validate/chuẩn hoá spec theo đúng schema của style được chọn. Mọi field do AI
+// trả đều đi qua asString (textContent phía client) nên không thể inject HTML.
+function normalizeSpec(style, raw) {
+  const items = (key) => (Array.isArray(raw?.[key]) ? raw[key] : [])
+
+  if (style === 'quiz') {
+    const questions = []
+    for (const q of items('questions')) {
+      if (!q || typeof q !== 'object') continue
+      const choices = Array.isArray(q.choices)
+        ? q.choices.map((c) => asString(c)).filter(Boolean).slice(0, 4)
+        : []
+      if (choices.length !== 4 || !asString(q.question)) continue
+      let answerIndex = Number.parseInt(q.answerIndex, 10)
+      if (!Number.isInteger(answerIndex) || answerIndex < 0 || answerIndex > 3) answerIndex = 0
+      questions.push({
+        emoji: asString(q.emoji, '🎯').slice(0, 8),
+        topic: normalizeTopic(q.topic),
+        question: asString(q.question),
+        choices,
+        answerIndex,
+        explanation: asString(q.explanation, 'Hãy nhớ lại phần giải thích trong bài học nhé.'),
+      })
+    }
+    if (questions.length < STYLE_GUIDES.quiz.minItems) {
+      throw new LearningGameError('Game trắc nghiệm AI tạo ra chưa đủ câu hỏi hợp lệ. Vui lòng thử lại.', 502, false)
+    }
+    return { ...baseFields(raw, style), questions }
+  }
+
+  if (style === 'truefalse') {
+    const statements = []
+    for (const item of items('statements')) {
+      if (!item || typeof item !== 'object' || !asString(item.statement)) continue
+      statements.push({
+        emoji: asString(item.emoji, '⚖️').slice(0, 8),
+        topic: normalizeTopic(item.topic),
+        statement: asString(item.statement),
+        isTrue: Boolean(item.isTrue),
+        explanation: asString(item.explanation, 'Hãy nhớ lại phần giải thích trong bài học nhé.'),
+      })
+    }
+    if (statements.length < STYLE_GUIDES.truefalse.minItems) {
+      throw new LearningGameError('Game Đúng/Sai AI tạo ra chưa đủ nhận định hợp lệ. Vui lòng thử lại.', 502, false)
+    }
+    return { ...baseFields(raw, style), statements }
+  }
+
+  if (style === 'matching') {
+    const pairs = []
+    for (const p of items('pairs')) {
+      if (!p || typeof p !== 'object') continue
+      const left = asString(p.left)
+      const right = asString(p.right)
+      if (!left || !right) continue
+      pairs.push({ left, right })
+    }
+    if (pairs.length < STYLE_GUIDES.matching.minItems) {
+      throw new LearningGameError('Game ghép cặp AI tạo ra chưa đủ cặp hợp lệ. Vui lòng thử lại.', 502, false)
+    }
+    return { ...baseFields(raw, style), pairs }
+  }
+
+  if (style === 'flashcards') {
+    const cards = []
+    for (const c of items('cards')) {
+      if (!c || typeof c !== 'object') continue
+      const front = asString(c.front)
+      const back = asString(c.back)
+      if (!front || !back) continue
+      cards.push({ emoji: asString(c.emoji, '🃏').slice(0, 8), front, back })
+    }
+    if (cards.length < STYLE_GUIDES.flashcards.minItems) {
+      throw new LearningGameError('Bộ thẻ ghi nhớ AI tạo ra chưa đủ thẻ hợp lệ. Vui lòng thử lại.', 502, false)
+    }
+    return { ...baseFields(raw, style), cards }
+  }
+
+  if (style === 'scenario') {
+    const scenarios = []
+    for (const item of items('scenarios')) {
+      if (!item || typeof item !== 'object') continue
+      const choices = Array.isArray(item.choices)
+        ? item.choices.map((c) => asString(c)).filter(Boolean).slice(0, 3)
+        : []
+      if (choices.length !== 3 || !asString(item.situation)) continue
+      let bestIndex = Number.parseInt(item.bestIndex, 10)
+      if (!Number.isInteger(bestIndex) || bestIndex < 0 || bestIndex > 2) bestIndex = 0
+      scenarios.push({
+        emoji: asString(item.emoji, '🧭').slice(0, 8),
+        topic: normalizeTopic(item.topic),
+        situation: asString(item.situation),
+        choices,
+        bestIndex,
+        explanation: asString(item.explanation, 'Hãy nhớ lại phần giải thích trong bài học nhé.'),
+      })
+    }
+    if (scenarios.length < STYLE_GUIDES.scenario.minItems) {
+      throw new LearningGameError('Game tình huống AI tạo ra chưa đủ tình huống hợp lệ. Vui lòng thử lại.', 502, false)
+    }
+    return { ...baseFields(raw, style), scenarios }
+  }
+
+  throw new LearningGameError(`Phong cách game không hợp lệ: ${style}`, 400, false)
 }
 
 // ---------------------------------------------------------------------------
@@ -343,6 +525,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Ảnh gửi lên không đúng định dạng data URL.', errorCode: 'BAD_IMAGE', retryable: false })
   }
 
+  // Chọn phong cách cho phiên bản mới — khác các phiên bản đã có nếu còn
+  // style chưa dùng, để mỗi lần bấm tạo ra một kiểu chơi khác hẳn.
+  const excludeStyles = Array.isArray(body.excludeStyles)
+    ? body.excludeStyles.filter((s) => typeof s === 'string' && GAME_STYLE_IDS.includes(s))
+    : []
+  const style = pickNextStyle(excludeStyles)
+  const systemPrompt = buildSystemPrompt(style)
+  console.log('[learning-game] picked style:', style, '| excluded:', excludeStyles.join(',') || '(none)')
+
   try {
     // Bước 1 (nếu có video): lấy phụ đề YouTube miễn phí — không tốn key AI.
     let transcript = null
@@ -384,6 +575,7 @@ export default async function handler(req, res) {
       // (vision model có thể bị rate limit/khai tử — text model thường ổn định hơn).
       attempts.push({ model: GROQ_TEXT_MODEL, withImage: false })
 
+      let lastGroqError = null
       for (const attempt of attempts) {
         // Hết ngân sách toàn cục thì dừng sớm, nhường thời gian cho nhánh Gemini.
         if (remainingGlobal() < GROQ_ATTEMPT_BUDGET_MS + 10_000) {
@@ -398,6 +590,7 @@ export default async function handler(req, res) {
                 model: attempt.model,
                 textPrompt: contextBlock,
                 imageDataUrl: attempt.withImage ? imageDataUrl : null,
+                systemPrompt,
               }),
             {
               label: `learning-game/groq/${attempt.model}`,
@@ -406,15 +599,23 @@ export default async function handler(req, res) {
               baseDelayMs: 800,
             },
           )
-          const spec = normalizeSpec(parseLooseJSON(raw))
+          const spec = normalizeSpec(style, parseLooseJSON(raw))
           return res.status(200).json({
             spec,
+            style,
             source: attempt.withImage ? 'groq-vision' : 'groq-text',
             transcript: transcriptNote || (transcript ? 'ok' : 'none'),
           })
         } catch (err) {
+          lastGroqError = err
           console.warn(`[learning-game] Groq attempt (${attempt.model}) failed:`, err?.message || err)
         }
+      }
+
+      // Lỗi validate/parse spec là tất định (retry cũng không cứu được) — trả
+      // luôn thông báo cụ thể thay vì che bằng câu fallback chung.
+      if (!geminiKey && lastGroqError && lastGroqError.retryable === false) {
+        return respondWithAiError(res, lastGroqError, 'ai')
       }
     }
 
@@ -436,6 +637,7 @@ export default async function handler(req, res) {
           textPrompt: contextBlock,
           videoUrl,
           imageDataUrl,
+          systemPrompt,
           timeoutMs: Math.max(15_000, Math.min(GEMINI_TIMEOUT_MS, geminiBudget - 2_000)),
         }),
       {
@@ -445,8 +647,8 @@ export default async function handler(req, res) {
         baseDelayMs: 1500,
       },
     )
-    const spec = normalizeSpec(parseLooseJSON(raw))
-    return res.status(200).json({ spec, source: 'gemini-fallback', transcript: transcript ? 'ok' : 'none' })
+    const spec = normalizeSpec(style, parseLooseJSON(raw))
+    return res.status(200).json({ spec, style, source: 'gemini-fallback', transcript: transcript ? 'ok' : 'none' })
   } catch (err) {
     // Mọi lỗi nhà cung cấp (kể cả chuỗi JSON thô của SDK) đều được chuẩn hoá
     // thành thông báo tiếng Việt — client không bao giờ thấy JSON kỹ thuật.
