@@ -3,6 +3,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import GuessMap from '../components/Map/GuessMap';
+import LearningGameLibrary from '../components/LearningGameLibrary';
 
 const Play = () => {
   const [user] = useAuthState(auth);
@@ -366,6 +367,18 @@ const Play = () => {
                     </div>
                   </div>
                 )}
+
+                {/* Game giáo dục của kỷ niệm này — chơi ngay tại trang Play giống
+                    #journal. Tự ẩn nếu kỷ niệm chưa có phiên bản game nào (kể cả
+                    memory cũ chỉ có field learningGame đơn lẻ vẫn hiển thị được). */}
+                <div className="mt-2">
+                  <LearningGameLibrary
+                    key={currentMemory.id}
+                    memory={currentMemory}
+                    coverImage={currentMemory.imageData}
+                    height={380}
+                  />
+                </div>
               </div>
             </div>
           </div>
