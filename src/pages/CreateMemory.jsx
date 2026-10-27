@@ -29,11 +29,10 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
   const [learningSpec, setLearningSpec] = useState(null);
   const [learningSpecLoading, setLearningSpecLoading] = useState(false);
   const [learningSpecError, setLearningSpecError] = useState('');
-  // "Tạo game giáo dục": JSON spec do AI sinh (lưu kèm memory ở field
-  // `learningGame`) + nguồn model đã dùng; HTML game được render client-side
-  // từ spec mỗi khi chơi (xem src/lib/learningGame.js).
-  const [gameSpec, setGameSpec] = useState(null);
-  const [gameSource, setGameSource] = useState('');
+  // "Tạo game giáo dục": mỗi lần bấm tạo thêm một PHIÊN BẢN (style khác nhau),
+  // lưu mảng vào field `learningGameVersions`; HTML render client-side từ spec
+  // mỗi khi chơi (xem src/lib/learningGame.js + gameRenderers.js).
+  const [gameVersions, setGameVersions] = useState([]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -261,8 +260,7 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
         imageType: imageryType, // 'photo' | 'streetview'
         videoUrl: videoUrl.trim() || null,
         videoLearningSpec: learningSpec || null,
-        learningGame: gameSpec || null,
-        learningGameSource: gameSource || null,
+        learningGameVersions: gameVersions,
         userId: user.uid,
         createdAt: new Date(),
       });
@@ -289,8 +287,7 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
     setVideoUrl('');
     setLearningSpec(null);
     setLearningSpecError('');
-    setGameSpec(null);
-    setGameSource('');
+    setGameVersions([]);
   };
 
   const goToPlay = () => {
@@ -525,8 +522,8 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
                 </div>
               )}
 
-              {/* Nút "Tạo game giáo dục": AI đọc video + tiêu đề + câu chuyện
-                  + ảnh, sinh JSON game spec rồi render HTML chơi được ngay. */}
+              {/* Nút "Tạo game giáo dục": mỗi lần bấm tạo một phiên bản mới
+                  (phong cách khác nhau), chơi được ngay và lưu kèm memory. */}
               <div className="mt-3">
                 <LearningGamePanel
                   videoUrl={videoUrl}
@@ -534,10 +531,8 @@ const CreateMemory = ({ onBack = null, onSuccess = null }) => {
                   story={story}
                   imageData={imagePreview}
                   memoryTitle={title}
-                  spec={gameSpec}
-                  onSpecChange={setGameSpec}
-                  source={gameSource}
-                  onSourceChange={setGameSource}
+                  versions={gameVersions}
+                  onVersionsChange={setGameVersions}
                 />
               </div>
             </div>

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { renderLearningGameHtml } from '../lib/learningGame';
+import { renderLearningGameHtml, describeGameContent } from '../lib/learningGame';
 
 // LearningGamePlayer — nhúng game HTML tự chứa trong iframe.
 //
@@ -62,7 +62,7 @@ export default function LearningGamePlayer({
       <span style={{ fontSize: 38 }}>🎮</span>
       <span className="font-journal font-semibold text-lg">Bấm để chơi game giáo dục</span>
       <span className="text-sm" style={{ color: 'var(--warm-brown)' }}>
-        {spec.questions?.length || 0} câu hỏi · chơi ngay trong trang, không cần cài đặt gì
+        {describeGameContent(spec)} · chơi ngay trong trang, không cần cài đặt gì
       </span>
     </button>
   );
