@@ -80,6 +80,7 @@ export default function LearningGameVersionRow({
         </div>
       </div>
 
+      {version.spec?.customDescription && <p className="px-3 pb-3 text-sm whitespace-pre-wrap"><strong>Thể loại tự mô tả:</strong> {version.spec.customDescription}<br /><span className="text-xs">Cơ chế: di chuyển, thu thập và né vật thể.</span></p>}
       {/* Hộp xác nhận Yes/No */}
       {confirming && (
         <div className="px-3 pb-3">

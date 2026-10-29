@@ -14,6 +14,7 @@
 // An toàn: toàn bộ dữ liệu động được nhồi qua MỘT blob JSON (safeJson) và lúc
 // chạy chỉ gán qua textContent/src — chữ của AI không thể inject markup.
 
+import { renderActionGame } from './actionGameRenderer.js';
 import { getGameStyle } from './gameStyles.js';
 
 const SOURCE_LABELS = {
@@ -29,6 +30,8 @@ export function describeGameContent(spec) {
   if (!spec || typeof spec !== 'object') return 'Game giáo dục';
   const count = (arr) => (Array.isArray(arr) ? arr.length : 0);
   const maps = {
+    action: () => `${count(spec.objects)} vật thể · di chuyển, thu thập và né`,
+    custom: () => `${count(spec.objects)} vật thể · thể loại tự mô tả`,
     quiz: () => `${count(spec.questions)} câu hỏi trắc nghiệm`,
     truefalse: () => `${count(spec.statements)} câu đúng / sai`,
     matching: () => `${count(spec.pairs)} cặp ghép`,
@@ -810,6 +813,8 @@ $('next-btn').addEventListener('click', () => {
 // ---------------------------------------------------------------------------
 
 const RENDERERS = {
+  action: renderActionGame,
+  custom: renderActionGame,
   quiz: renderQuiz,
   truefalse: renderTrueFalse,
   matching: renderMatching,
