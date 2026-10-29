@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import MemorySocialActions from './MemorySocialActions';
 import MemoryLocationMap from './MemoryLocationMap';
 import StreetView from './StreetView';
 import { fileToStoredImageDataUrl } from '../utils/imageStorage';
@@ -22,8 +23,8 @@ const formatDate = (timestamp) => {
 // Right-side detail view opened from "Places everyone has saved".
 // Shows the full memory (title, story, image, map) with an EDITING
 // button pinned to the top of the panel.
-const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
-  const [isEditing, setIsEditing] = useState(false);
+const MemoryDetailPanel = ({ memory, currentUserId, onClose, onCopy, initialEditing = false }) => {
+  const [isEditing, setIsEditing] = useState(initialEditing && currentUserId === memory.userId);
   const [editTitle, setEditTitle] = useState(memory.title || '');
   const [editStory, setEditStory] = useState(memory.story || '');
   const [editLocation, setEditLocation] = useState(memory.location || null);
@@ -35,7 +36,6 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setIsEditing(false);
     setEditTitle(memory.title || '');
     setEditStory(memory.story || '');
     setEditLocation(memory.location || null);
@@ -50,7 +50,7 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
         learningGameSource: memory.learningGameSource,
       }),
     );
-  }, [memory.id, memory.imageType, memory.imageData, memory.videoUrl, memory.learningGameVersions, memory.learningGame, memory.learningGameSource]);
+  }, [memory.title, memory.story, memory.location, memory.id, memory.imageType, memory.imageData, memory.videoUrl, memory.learningGameVersions, memory.learningGame, memory.learningGameSource]);
 
   const handleEditImageChange = (e) => {
     const file = e.target.files[0];
@@ -65,6 +65,7 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
   const isOwner = currentUserId && memory.userId && currentUserId === memory.userId;
 
   const handleSave = async () => {
+    if (!isOwner) return;
     if (!editTitle.trim() || !editStory.trim()) {
       alert('Please fill in both the title and story');
       return;
@@ -135,7 +136,7 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
           ← Back
         </button>
 
-        {!isEditing ? (
+        {isOwner && (!isEditing ? (
           <button
             type="button"
             onClick={() => {
@@ -163,10 +164,10 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
             <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
             <span>EDITING</span>
           </div>
-        )}
+        ))}
       </div>
 
-      {isEditing ? (
+      {isEditing && isOwner ? (
         <div className="space-y-4">
           <input
             type="text"
@@ -284,12 +285,6 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
               Cancel
             </button>
           </div>
-
-          {!isOwner && (
-            <p className="text-xs italic" style={{ color: 'var(--warm-brown)' }}>
-              This memory belongs to someone else — saving will only work if you have permission.
-            </p>
-          )}
         </div>
       ) : (
         <div className="space-y-4">
@@ -323,6 +318,8 @@ const MemoryDetailPanel = ({ memory, currentUserId, onClose }) => {
           <LearningGameLibrary memory={memory} coverImage={memory.imageData} height={400} />
 
           <MemoryLocationMap location={memory.location} height="11rem" />
+          {!isOwner && <p className="text-xs">Kỷ niệm của người khác — bạn không thể chỉnh sửa bản gốc.</p>}
+          <MemorySocialActions memory={memory} userId={currentUserId} onCopy={onCopy} />
         </div>
       )}
     </div>
