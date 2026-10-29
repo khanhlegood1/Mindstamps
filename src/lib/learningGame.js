@@ -29,6 +29,8 @@ export const MAX_GAME_VERSIONS = 6;
 
 // Tên field dữ liệu chính của mỗi style (dùng để validate response server).
 const STYLE_PAYLOAD_KEY = {
+  action: 'objects',
+  custom: 'objects',
   quiz: 'questions',
   truefalse: 'statements',
   matching: 'pairs',
@@ -100,6 +102,8 @@ export async function generateLearningGame({
   videoUrl = '',
   imageData = null,
   excludeStyles = [],
+  requestedStyle = 'auto',
+  customDescription = '',
 } = {}) {
   let compressedImage = null;
   if (imageData) {
@@ -117,6 +121,8 @@ export async function generateLearningGame({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        requestedStyle,
+        customDescription: requestedStyle === 'custom' ? customDescription.trim() : '',
         title: title || '',
         story: story || '',
         videoUrl: videoUrl || null,

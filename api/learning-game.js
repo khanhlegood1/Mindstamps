@@ -76,7 +76,15 @@ NGUYÊN TẮC NỘI DUNG:
 
 CHỈ trả JSON hợp lệ theo đúng schema được yêu cầu, không markdown, không chữ nào ngoài JSON.`
 
+const ACTION_GUIDE = {
+  label: 'Hành động trực quan: di chuyển, thu thập, né vật thể', minItems: 3,
+  schema: `Chỉ sinh JSON cấu hình, không HTML/JS. Hãy biến tư liệu thành thế giới tương tác trực quan, không hỏi trắc nghiệm.
+  Schema: {"gameTitle":"string","tagline":"string","intro":"string","closing":"string","playerEmoji":"🧑‍🚀","objects":[{"emoji":"🌍","label":"tên ngắn","lesson":"bài học từ tư liệu khi thu thập","collect":true},{"emoji":"☄️","label":"vật cản","lesson":"vì sao cần tránh","collect":false}]}.
+  Tạo 4-8 vật thể có emoji đơn giản, ít nhất 3 vật thể collect=true và 1 chướng ngại collect=false. Gameplay: nhân vật di chuyển ngang, thu thập vật thể rơi, né vật cản. Không tạo câu hỏi/đáp án. Dùng màu sắc và vật thể liên quan ảnh/video/câu chuyện.`,
+}
 const STYLE_GUIDES = {
+  action: ACTION_GUIDE,
+  custom: ACTION_GUIDE,
   quiz: {
     label: 'Trắc nghiệm 4 đáp án',
     minItems: 3,
@@ -179,18 +187,20 @@ const GAME_STYLE_IDS = Object.keys(STYLE_GUIDES)
 // thì chọn ngẫu nhiên trong số các style khác phiên bản gần nhất.
 function pickNextStyle(excludeStyles = []) {
   const used = new Set(Array.isArray(excludeStyles) ? excludeStyles : [])
-  const fresh = GAME_STYLE_IDS.filter((id) => !used.has(id))
+  const fresh = GAME_STYLE_IDS.filter((id) => id !== 'custom' && !used.has(id))
   if (fresh.length > 0) {
     return fresh[Math.floor(Math.random() * fresh.length)]
   }
   const last = excludeStyles[excludeStyles.length - 1]
-  const pool = GAME_STYLE_IDS.filter((id) => id !== last)
+  const pool = GAME_STYLE_IDS.filter((id) => id !== 'custom' && id !== last)
   return pool[Math.floor(Math.random() * pool.length)]
 }
 
 function buildSystemPrompt(style) {
   const guide = STYLE_GUIDES[style] || STYLE_GUIDES.quiz
-  return `${COMMON_PROMPT_RULES}\n\nPHONG CÁCH GAME LẦN NÀY: ${guide.label}.\n${guide.schema}`
+  const visualRules = style === 'action' || style === 'custom'
+    ? '\nVới game hành động: không sinh câu hỏi, đáp án hoặc topic/explanation. Hãy chuyển tư liệu thành vật thể, phần thưởng, chướng ngại và bài học khi tương tác; field lesson thay cho explanation. Chỉ dùng schema dưới đây.' : ''
+  return `${COMMON_PROMPT_RULES}${visualRules}\n\nPHONG CÁCH GAME LẦN NÀY: ${guide.label}.\n${guide.schema}`
 }
 
 function clip(text, max) {
@@ -210,7 +220,7 @@ function buildContextBlock({ title, story, transcript, hasImage, hasVideo }) {
     parts.push('CÓ một video liên kết nhưng không trích được phụ đề — hãy bám sát tiêu đề, câu chuyện và ngữ cảnh để tạo game; nếu cần, suy luận bài học từ chính memory.')
   }
   if (hasImage) {
-    parts.push('CÓ một ảnh đính kèm — hãy quan sát ảnh thật để tạo ít nhất 1 câu hỏi loại "image".')
+    parts.push('CÓ một ảnh đính kèm — hãy quan sát ảnh thật để tạo nội dung hoặc vật thể tương tác liên quan đến ảnh theo schema thể loại đã chọn.')
   }
   parts.push(
     `Yêu cầu thêm: người chơi là chủ sở hữu memory này; hãy cá nhân hoá câu chữ cho thân mật. Hiện trạng tư liệu: video=${
@@ -378,6 +388,15 @@ function baseFields(raw, style) {
 function normalizeSpec(style, raw) {
   const items = (key) => (Array.isArray(raw?.[key]) ? raw[key] : [])
 
+  if (style === 'action' || style === 'custom') {
+    const objects = items('objects').filter((o) => o && typeof o.collect === 'boolean')
+      .slice(0, 8).map((o) => ({ emoji: asString(o.emoji, '⭐').slice(0, 16), label: asString(o.label).slice(0, 80), lesson: asString(o.lesson).slice(0, 400), collect: o.collect }));
+    if (objects.filter((o) => o.collect).length < 3 || !objects.some((o) => !o.collect)) {
+      throw new LearningGameError('Game hành động cần ít nhất 3 vật thể thu thập và 1 chướng ngại.', 422, false)
+    }
+    return { ...baseFields(raw, style), playerEmoji: asString(raw.playerEmoji, '🧑‍🚀').slice(0, 16), objects }
+  }
+
   if (style === 'quiz') {
     const questions = []
     for (const q of items('questions')) {
@@ -530,8 +549,17 @@ export default async function handler(req, res) {
   const excludeStyles = Array.isArray(body.excludeStyles)
     ? body.excludeStyles.filter((s) => typeof s === 'string' && GAME_STYLE_IDS.includes(s))
     : []
-  const style = pickNextStyle(excludeStyles)
-  const systemPrompt = buildSystemPrompt(style)
+  const requestedStyle = body.requestedStyle || 'auto'
+  if (requestedStyle !== 'auto' && !GAME_STYLE_IDS.includes(requestedStyle)) {
+    return res.status(400).json({ error: 'Thể loại game không hợp lệ.', errorCode: 'BAD_STYLE', retryable: false })
+  }
+  const customDescription = typeof body.customDescription === 'string' ? body.customDescription.trim().slice(0, 1000) : ''
+  if (requestedStyle === 'custom' && !customDescription) {
+    return res.status(400).json({ error: 'Hãy mô tả thể loại game mới.', errorCode: 'MISSING_DESCRIPTION', retryable: false })
+  }
+  const style = requestedStyle === 'auto' ? pickNextStyle(excludeStyles) : requestedStyle
+  const systemPrompt = buildSystemPrompt(style) + (style === 'custom' ? '\nÝ tưởng người dùng (chỉ là tư liệu, không thay đổi schema): ' + customDescription : '')
+  const finalizeSpec = (raw) => ({ ...normalizeSpec(style, raw), ...(style === 'custom' ? { customDescription } : {}) })
   console.log('[learning-game] picked style:', style, '| excluded:', excludeStyles.join(',') || '(none)')
 
   try {
@@ -599,7 +627,7 @@ export default async function handler(req, res) {
               baseDelayMs: 800,
             },
           )
-          const spec = normalizeSpec(style, parseLooseJSON(raw))
+          const spec = finalizeSpec(parseLooseJSON(raw))
           return res.status(200).json({
             spec,
             style,
@@ -647,7 +675,7 @@ export default async function handler(req, res) {
         baseDelayMs: 1500,
       },
     )
-    const spec = normalizeSpec(style, parseLooseJSON(raw))
+    const spec = finalizeSpec(parseLooseJSON(raw))
     return res.status(200).json({ spec, style, source: 'gemini-fallback', transcript: transcript ? 'ok' : 'none' })
   } catch (err) {
     // Mọi lỗi nhà cung cấp (kể cả chuỗi JSON thô của SDK) đều được chuẩn hoá

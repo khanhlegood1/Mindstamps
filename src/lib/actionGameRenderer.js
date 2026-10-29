@@ -1,0 +1,33 @@
+// Standalone offline arcade template. AI data never becomes executable code.
+export function renderActionGame(spec, opts = {}) {
+  const json = JSON.stringify({ ...spec, coverImage: opts.coverImage || null }).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+  return `<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mindstamps · Hành động</title><style>
+*{box-sizing:border-box}body{margin:0;background:#0e1731;color:#fff;font:16px system-ui}main{max-width:800px;margin:auto;padding:16px}h1{font-size:24px;margin:8px 0}p{line-height:1.5}button{font:inherit;border:0;border-radius:12px;padding:12px 20px;background:#38bdf8;color:#062138;cursor:pointer;min-height:48px}button:disabled{opacity:.5}.hud{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:10px 0}.arena{height:330px;position:relative;overflow:hidden;border:2px solid #647db5;border-radius:18px;background:linear-gradient(#182f5a,#274a57);touch-action:none}.arena img{position:absolute;width:100%;height:100%;object-fit:cover;opacity:.23;pointer-events:none}.sprite{position:absolute;font-size:38px;line-height:1;transform:translate(-50%,-50%);filter:drop-shadow(0 3px 3px #0008);pointer-events:none}#player{top:88%;font-size:46px}.legend{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.chip{padding:6px 10px;border-radius:10px;background:#233653;font-size:14px}.controls{display:flex;gap:12px;justify-content:center;margin:12px 0}.controls button{min-width:90px;touch-action:none}#lesson{min-height:54px;background:#223453;padding:12px;border-radius:12px}#description{white-space:pre-wrap;font-size:14px;color:#c4d5fb}button:focus-visible{outline:3px solid #fbbf24;outline-offset:3px}@media(max-width:450px){.arena{height:280px}.sprite{font-size:32px}}
+</style></head><body><main><h1 id="title"></h1><p id="intro"></p><p id="description"></p><div class="legend" id="legend"></div><div class="hud"><strong id="score">⭐ 0 / 10</strong><span id="lives">❤️ 3</span><button id="start">▶ Bắt đầu</button><button id="pause" disabled>⏸ Tạm dừng</button></div><div class="arena" id="arena" aria-label="Sân chơi: di chuyển ngang để thu thập, né vật cản"><span class="sprite" id="player"></span></div><div class="controls"><button id="left" aria-label="Di chuyển trái">◀ Trái</button><button id="right" aria-label="Di chuyển phải">Phải ▶</button></div><p>← → hoặc A / D để di chuyển. Trên điện thoại: giữ nút hoặc kéo ngón tay trong sân. Thu thập 10 vật thể để thắng, né vật cản đỏ. Không giới hạn thời gian.</p><p id="lesson" role="status" aria-live="polite">Sẵn sàng khám phá!</p></main><script>
+const GAME=${json};
+const $=id=>document.getElementById(id);
+$('title').textContent=GAME.gameTitle||'Phiêu lưu kỷ niệm';$('intro').textContent=GAME.intro||'';
+$('description').textContent=GAME.customDescription?'Thể loại tự mô tả: '+GAME.customDescription+' · Cơ chế: thu thập và né vật thể.':'';
+$('player').textContent=GAME.playerEmoji||'🧑‍🚀';
+if(typeof GAME.coverImage==='string'&&/^data:image\\/(jpeg|png|webp);base64,/.test(GAME.coverImage)){const img=document.createElement('img');img.src=GAME.coverImage;img.alt='Ảnh kỷ niệm';$('arena').prepend(img);}
+const objects=GAME.objects||[];for(const o of objects){const chip=document.createElement('span');chip.className='chip';chip.textContent=(o.collect?'✅ ':'🚫 ')+o.emoji+' '+o.label;$('legend').append(chip);}
+let running=false,paused=false,x=50,score=0,lives=3,last=0,spawn=0,entities=[],left=false,right=false;
+function hud(){$('score').textContent='⭐ '+score+' / 10';$('lives').textContent='❤️ '+lives;$('player').style.left=x+'%';}
+function finish(win){running=false;$('start').disabled=false;$('start').textContent='🔁 Chơi lại';$('pause').disabled=true;$('lesson').textContent=(win?'🏆 Hoàn thành! ':'💪 Hãy thử lại! ')+(GAME.closing||'');}
+function reset(){for(const e of entities)e.el.remove();entities=[];x=50;score=0;lives=3;spawn=0;last=0;left=false;right=false;paused=false;running=true;$('start').disabled=true;$('pause').disabled=false;$('pause').textContent='⏸ Tạm dừng';$('lesson').textContent='Thu thập vật thể có dấu ✅, tránh 🚫!';hud();}
+$('start').onclick=reset;
+$('pause').onclick=()=>{paused=!paused;$('pause').textContent=paused?'▶ Tiếp tục':'⏸ Tạm dừng';left=false;right=false;};
+function tick(t){const dt=last?Math.min((t-last)/1000,.05):0;last=t;
+if(running&&!paused){x=Math.max(5,Math.min(95,x+((right?1:0)-(left?1:0))*65*dt));spawn+=dt;
+if(spawn>1.15&&objects.length){spawn=0;const o=objects[Math.floor(Math.random()*objects.length)];const el=document.createElement('span');el.className='sprite';el.textContent=o.emoji;el.style.background=o.collect?'#16a34a66':'#dc262688';el.style.borderRadius='50%';el.style.padding='4px';$('arena').append(el);entities.push({o,el,x:8+Math.random()*84,y:-5});}
+for(const e of [...entities]){e.y+=21*dt;e.el.style.left=e.x+'%';e.el.style.top=e.y+'%';const hit=Math.abs(e.x-x)<8&&Math.abs(e.y-88)<8;
+if(hit||e.y>108){e.el.remove();entities=entities.filter(v=>v!==e);if(hit){if(e.o.collect)score++;else lives--;$('lesson').textContent=(e.o.collect?'✨ ':'🚫 ')+e.o.label+' — '+e.o.lesson;if(score>=10||lives<=0){finish(score>=10);break;}}}}
+hud();}requestAnimationFrame(tick);}requestAnimationFrame(tick);
+window.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','a','d','A','D'].includes(e.key)){e.preventDefault();if(e.key==='ArrowLeft'||e.key.toLowerCase()==='a')left=true;else right=true;}});
+window.addEventListener('keyup',e=>{if(e.key==='ArrowLeft'||e.key.toLowerCase()==='a')left=false;if(e.key==='ArrowRight'||e.key.toLowerCase()==='d')right=false;});
+function release(){left=false;right=false;}window.addEventListener('blur',()=>{release();if(running&&!paused)$('pause').click();});document.addEventListener('visibilitychange',()=>{if(document.hidden){release();if(running&&!paused)$('pause').click();}});
+for(const id of ['left','right']){const b=$(id);b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);if(id==='left')left=true;else right=true;});b.addEventListener('pointerup',release);b.addEventListener('pointercancel',release);b.addEventListener('lostpointercapture',release);}
+function move(e){const r=$('arena').getBoundingClientRect();x=Math.max(5,Math.min(95,(e.clientX-r.left)/r.width*100));hud();}
+$('arena').addEventListener('pointerdown',e=>{if(!running||paused)return;$('arena').setPointerCapture(e.pointerId);move(e);});$('arena').addEventListener('pointermove',e=>{if(running&&!paused&&$('arena').hasPointerCapture(e.pointerId))move(e);});hud();
+</script></body></html>`;
+}

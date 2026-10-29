@@ -1,3 +1,4 @@
+import { GAME_STYLES } from '../lib/gameStyles';
 import { useState } from 'react';
 import {
   generateLearningGame,
@@ -25,6 +26,9 @@ export default function LearningGamePanel({
   onVersionsChange,
   height = 380,
 }) {
+  const [requestedStyle, setRequestedStyle] = useState('auto');
+  const [customDescription, setCustomDescription] = useState('');
+  const invalidCustom = requestedStyle === 'custom' && !customDescription.trim();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [openVersionId, setOpenVersionId] = useState(null);
@@ -34,12 +38,14 @@ export default function LearningGamePanel({
   const reachedCap = versions.length >= MAX_GAME_VERSIONS;
 
   const handleGenerate = async () => {
-    if (!hasAnyMaterial || loading || reachedCap) return;
+    if (!hasAnyMaterial || loading || reachedCap || invalidCustom) return;
     setLoading(true);
     setError('');
     try {
       // Gửi danh sách style đã dùng để server chọn style KHÁC cho phiên bản mới.
       const { spec, source } = await generateLearningGame({
+        requestedStyle,
+        customDescription,
         title,
         story,
         videoUrl: videoUrl?.trim() || '',
@@ -92,7 +98,7 @@ export default function LearningGamePanel({
         <button
           type="button"
           onClick={handleGenerate}
-          disabled={!hasAnyMaterial || loading || reachedCap}
+          disabled={!hasAnyMaterial || loading || reachedCap || invalidCustom}
           className="btn-sage whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium disabled:opacity-50 flex items-center gap-2"
         >
           {loading ? (
@@ -109,6 +115,20 @@ export default function LearningGamePanel({
             '🎮 Tạo game giáo dục'
           )}
         </button>
+      </div>
+
+      <div className="mt-3 space-y-2">
+        <label className="block text-sm">Thể loại game
+          <select className="vintage-input w-full mt-1" value={requestedStyle} disabled={loading} onChange={(e) => setRequestedStyle(e.target.value)}>
+            <option value="auto">Tự động chọn thể loại khác</option>
+            {GAME_STYLES.filter((s) => s.id !== 'custom').map((s) => <option key={s.id} value={s.id}>{s.emoji} {s.label}</option>)}
+            <option value="custom">✨ Tự mô tả thể loại mới…</option>
+          </select>
+        </label>
+        {requestedStyle === 'custom' && <label className="block text-sm">Mô tả thể loại / cách chơi của bạn
+          <textarea className="vintage-input w-full mt-1" maxLength={1000} value={customDescription} disabled={loading} onChange={(e) => setCustomDescription(e.target.value)} placeholder="Ví dụ: phi hành gia thu thập các hành tinh, né thiên thạch…" />
+          <span className="text-xs">Mô tả được lưu và công khai cùng phiên bản, không thêm vào combobox. Hiện hỗ trợ cơ chế di chuyển, thu thập và né vật thể; không tạo mã game tùy ý.</span>
+        </label>}
       </div>
 
       {!hasAnyMaterial && (
@@ -134,7 +154,7 @@ export default function LearningGamePanel({
             aria-hidden="true"
           />
           <span>
-            Đang trích nội dung video và dựng một game mới theo phong cách khác... bước này có thể mất 30–90 giây.
+            Đang phân tích tư liệu và dựng game theo thể loại đã chọn... bước này có thể mất 30–90 giây.
           </span>
         </div>
       )}

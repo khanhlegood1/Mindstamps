@@ -10,6 +10,8 @@
 // Dùng chung cho: API client (nhãn hiển thị), render HTML, và UI version list.
 
 export const GAME_STYLES = [
+  { id: 'action', emoji: '🏃', label: 'Hành động trực quan', description: 'Di chuyển để thu thập vật thể, né chướng ngại vật và khám phá bài học', accent: '#3b82f6' },
+  { id: 'custom', emoji: '✨', label: 'Tự mô tả thể loại mới…', description: 'Ý tưởng riêng, được thể hiện bằng cơ chế thu thập / né vật thể', accent: '#8b5cf6' },
   {
     id: 'quiz',
     emoji: '🎯',
