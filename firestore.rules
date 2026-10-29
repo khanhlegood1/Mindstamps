@@ -7,7 +7,20 @@ service cloud.firestore {
       // Public read: the login screen shows every user's memory as a point
       // on the globe (ExploreGlobe), including to signed-out visitors.
       allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      allow update: if request.auth != null
+        && request.auth.uid == resource.data.userId
+        && request.resource.data.userId == resource.data.userId;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.userId;
+
+      match /reactions/{userId} {
+        allow read: if true;
+        allow create, update: if request.auth != null && request.auth.uid == userId
+          && exists(/databases/$(database)/documents/memories/$(memoryId))
+          && request.resource.data.keys().hasOnly(['type'])
+          && request.resource.data.type in ['like', 'love'];
+        allow delete: if request.auth != null && request.auth.uid == userId;
+      }
     }
 
     match /{document=**} {

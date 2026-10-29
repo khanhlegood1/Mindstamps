@@ -34,6 +34,7 @@ const AllLocationsList = ({ onSelect, selectedId }) => {
           .map((docSnap) => {
             const data = docSnap.data();
             return {
+              ...data,
               id: docSnap.id,
               name: data.location?.name || null,
               lat: data.location?.lat,

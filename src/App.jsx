@@ -10,14 +10,14 @@ import Journal from './pages/Journal';
 function App() {
   const [user, loading] = useAuthState(auth);
   const [currentPage, setCurrentPage] = useState(() => {
-    const hash = window.location.hash.slice(1);
+    const hash = window.location.hash.slice(1).split('?')[0];
     return hash || 'home';
   });
 
   // Simple routing based on URL hash
   useEffect(() => {
     const handleHashChange = () => {
-      const hash = window.location.hash.slice(1);
+      const hash = window.location.hash.slice(1).split('?')[0];
       setCurrentPage(hash || 'home');
     };
     

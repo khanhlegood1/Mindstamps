@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
 import { auth } from '../config/firebase';
 import Login from '../components/Auth/Login';
 import AllLocationsList from '../components/AllLocationsList';
@@ -8,6 +10,27 @@ import MemoryDetailPanel from '../components/MemoryDetailPanel';
 const Home = () => {
   const [user, loading] = useAuthState(auth);
   const [selectedMemory, setSelectedMemory] = useState(null);
+
+  const [initialEditing, setInitialEditing] = useState(false);
+  const [linkError, setLinkError] = useState('');
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      const id = new URLSearchParams(window.location.hash.split('?')[1] || '').get('memory');
+      if (!id || !user) return;
+      setLinkError('');
+      try {
+        const snap = await getDoc(doc(db, 'memories', id));
+        if (!snap.exists()) throw new Error('missing');
+        if (active) { setInitialEditing(false); setSelectedMemory({ ...snap.data(), id: snap.id }); }
+      } catch {
+        if (active) setLinkError('Không mở được kỷ niệm từ liên kết này.');
+      }
+    };
+    load();
+    window.addEventListener('hashchange', load);
+    return () => { active = false; window.removeEventListener('hashchange', load); };
+  }, [user]);
 
   if (loading) {
     return (
@@ -40,8 +63,9 @@ const Home = () => {
             </p>
           </div>
 
+          {linkError && <p role="alert">{linkError}</p>}
           <AllLocationsList
-            onSelect={setSelectedMemory}
+            onSelect={(memory) => { setInitialEditing(false); setSelectedMemory(memory); }}
             selectedId={selectedMemory?.id}
           />
         </div>
@@ -51,6 +75,9 @@ const Home = () => {
       <div className="flex flex-col justify-center items-center p-6 md:p-12 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, var(--soft-beige) 0%, var(--warm-cream) 100%)' }}>
         {selectedMemory ? (
           <MemoryDetailPanel
+            key={selectedMemory.id}
+            initialEditing={initialEditing}
+            onCopy={(memory, edit) => { setInitialEditing(edit); setSelectedMemory(memory); }}
             memory={selectedMemory}
             currentUserId={user.uid}
             onClose={() => setSelectedMemory(null)}
